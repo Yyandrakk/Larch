@@ -22,7 +22,7 @@ Larch is a [Tauri](https://tauri.app/) application composed of three main parts:
 
 To ensure our backend is idiomatic, secure, and maintainable, we follow these patterns:
 
--   **Stateless Services & Dependency Injection:** All services, including the `TaigaClient`, are **stateless**. We instantiate them once at application startup and place them into Tauri's managed state. Tauri commands receive dependencies using the `tauri::State` guard, which handles injection efficiently.
+-   **Dynamic Dependency Injection:** Core services like the `TaigaClient` are created dynamically. For instance, the `TaigaClient` is instantiated by the `login` command using the user-provided API URL. Upon successful authentication, the client is placed into Tauri's managed state. Subsequent commands access this shared client instance via the `tauri::State` guard.
 
 -   **Model Separation (Anti-Corruption Layer):** We maintain a strict separation between API data structures and our application's domain models.
     -   **DTOs:** The `taiga-client` crate defines Data Transfer Objects (e.g., `TaigaProjectDto`) used for API serialization.
@@ -36,3 +36,4 @@ To ensure our backend is idiomatic, secure, and maintainable, we follow these pa
 The project is organized as a Cargo Workspace to manage the different Rust crates.
 
 - **ADR-0001:** For the decision to use a workspace and a separate API client crate, see [ADR-0001](./ADR/0001-workspace-and-api-client-crate.md).
+- **ADR-0002:** For the decision to dynamically instantiate the API client, see [ADR-0002](./ADR/0002-dynamic-client-instantiation.md).
