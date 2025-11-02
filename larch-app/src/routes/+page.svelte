@@ -1,156 +1,172 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
 
-  let name = $state("");
-  let greetMsg = $state("");
+  // --- State ---
+  let apiUrl = $state("https://api.taiga.io/api/v1");
+  let username = $state("");
+  let password = $state("");
+  let error = $state<any>(null);
+  let user = $state<any>(null);
+  let isLoading = $state(false);
 
-  async function greet(event: Event) {
+  // --- Actions ---
+  async function login(event: Event) {
     event.preventDefault();
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    greetMsg = await invoke("greet", { name });
+    isLoading = true;
+    error = null;
+
+    try {
+      const result = await invoke("login", {
+        apiUrl,
+        username,
+        password,
+      });
+      user = result;
+    } catch (e) {
+      error = e;
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  function logout() {
+    user = null;
+    username = "";
+    password = "";
+    error = null;
+    invoke("logout"); // Fire and forget
   }
 </script>
 
 <main class="container">
-  <h1>Welcome to Tauri + Svelte</h1>
+  <h1>Larch - Taiga Client</h1>
 
-  <div class="row">
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo vite" alt="Vite Logo" />
-    </a>
-    <a href="https://tauri.app" target="_blank">
-      <img src="/tauri.svg" class="logo tauri" alt="Tauri Logo" />
-    </a>
-    <a href="https://svelte.dev" target="_blank">
-      <img src="/svelte.svg" class="logo svelte-kit" alt="SvelteKit Logo" />
-    </a>
-  </div>
-  <p>Click on the Tauri, Vite, and SvelteKit logos to learn more.</p>
+  {#if user}
+    <div class="user-card">
+      <h2>Welcome, {user.full_name}</h2>
+      <p>{user.email}</p>
+      <button onclick={logout}>Logout</button>
+    </div>
+  {:else}
+    <form class="login-form" onsubmit={login}>
+      <div class="form-group">
+        <label for="api-url">Taiga API URL</label>
+        <input id="api-url" type="text" bind:value={apiUrl} required />
+      </div>
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input id="username" type="text" bind:value={username} required />
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input id="password" type="password" bind:value={password} required />
+      </div>
+      <button type="submit" disabled={isLoading}>
+        {#if isLoading}Logging in...{:else}Login{/if}
+      </button>
+    </form>
 
-  <form class="row" onsubmit={greet}>
-    <input id="greet-input" placeholder="Enter a name..." bind:value={name} />
-    <button type="submit">Greet</button>
-  </form>
-  <p>{greetMsg}</p>
+    {#if error}
+      <div class="error-box">
+        <p><strong>Error:</strong></p>
+        <pre>{JSON.stringify(error, null, 2)}</pre>
+      </div>
+    {/if}
+  {/if}
 </main>
 
 <style>
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
-}
-
-.logo.svelte-kit:hover {
-  filter: drop-shadow(0 0 2em #ff3e00);
-}
-
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-
-  color: #0f0f0f;
-  background-color: #f6f6f6;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
-.container {
-  margin: 0;
-  padding-top: 10vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  text-align: center;
-}
-
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
+  .container {
+    margin: 0 auto;
+    padding: 2rem;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
   }
 
-  a:hover {
-    color: #24c8db;
+  h1 {
+    text-align: center;
   }
 
-  input,
+  .login-form, .user-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 2rem;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  label {
+    font-weight: 500;
+  }
+
+  input {
+    padding: 0.8em 1em;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 1em;
+  }
+
   button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
+    padding: 0.8em 1.2em;
+    border-radius: 4px;
+    border: none;
+    background-color: #396cd8;
+    color: white;
+    font-size: 1em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.25s;
   }
-  button:active {
-    background-color: #0f0f0f69;
-  }
-}
 
+  button:hover {
+    background-color: #2c5bbd;
+  }
+
+  button:disabled {
+    background-color: #a0a0a0;
+    cursor: not-allowed;
+  }
+
+  .error-box {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 4px;
+    background-color: #ffebee;
+    color: #c62828;
+    border: 1px solid #c62828;
+  }
+
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .login-form, .user-card {
+      background-color: #2f2f2f;
+      color: #f6f6f6;
+    }
+
+    input {
+      background-color: #3a3a3a;
+      border-color: #555;
+      color: #f6f6f6;
+    }
+
+    .error-box {
+      background-color: #4d2222;
+      color: #ffcdd2;
+      border-color: #ef9a9a;
+    }
+  }
 </style>
