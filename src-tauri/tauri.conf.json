@@ -1,18 +1,18 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "tauri2-svelte5-shadcn",
-  "version": "2.0.0",
-  "identifier": "com.tauri2-svelte5-shadcn.dev",
+  "productName": "larch-app",
+  "version": "0.0.1",
+  "identifier": "com.yyandrakk.larch-app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
-    "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "beforeDevCommand": "pnpm run dev",
+    "beforeBuildCommand": "pnpm run build"
   },
   "app": {
     "windows": [
       {
-        "title": "tauri2-svelte5-shadcn",
+        "title": "larch-app",
         "width": 800,
         "height": 600,
         "resizable": true,

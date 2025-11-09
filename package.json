@@ -1,11 +1,10 @@
 {
-	"name": "tauri2-svelte5-shadcn",
+	"name": "larch-app",
+	"version": "0.1.0",
 	"private": true,
-	"version": "2.0.0",
-	"description": "A simple desktop application template combining Tauri 2 with Svelte 5 and shadcn-svelte with a basic ci/cd implemented.",
+	"description": "",
 	"author": {
-		"name": "Alysonhower Veras Vieira",
-		"email": "contato@alysonhower.dev"
+		"name": "Oscar Garcia de Lara Parreño"
 	},
 	"type": "module",
 	"scripts": {

@@ -1,17 +1,17 @@
 [package]
-name = "app"
-version = "1.0.0"
-description = "A simple desktop application template combining Tauri 2 with Svelte 5 and shadcn-svelte with a basic ci/cd implemented."
-authors = ["Alysonhower Veras Vieira"]
+name = "larch-app"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["Oscar Garcia de Lara Parreño"]
 license = "MIT"
-repository = "alysonhower/tauri2-svelte5-shadcn"
+repository = "Yyandrakkk/Larch"
 edition = "2021"
 rust-version = "1.77.2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-name = "app_lib"
+name = "larch_app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
