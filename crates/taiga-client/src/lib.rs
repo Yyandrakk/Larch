@@ -1,3 +1,4 @@
+use reqwest::StatusCode;
 use secrecy::{ExposeSecret, Secret};
 use url::Url;
 
@@ -47,7 +48,15 @@ impl TaigaClient {
             let auth_detail = response.json::<AuthDetail>().await?;
             Ok(auth_detail)
         } else {
-            Err(TaigaClientError::AuthFailed(response.status()))
+            let status = response.status();
+            let err = match status {
+                StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                    TaigaClientError::Unauthorized(status)
+                }
+                _ => TaigaClientError::AuthFailed(status),
+            };
+            Err(err)
         }
     }
 
@@ -65,7 +74,15 @@ impl TaigaClient {
             let me = response.json::<Me>().await?;
             Ok(me)
         } else {
-            Err(TaigaClientError::AuthFailed(response.status()))
+            let status = response.status();
+            let err = match status {
+                StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                    TaigaClientError::Unauthorized(status)
+                }
+                _ => TaigaClientError::AuthFailed(status),
+            };
+            Err(err)
         }
     }
 
@@ -86,7 +103,15 @@ impl TaigaClient {
             let projects = response.json::<Vec<ProjectDto>>().await?;
             Ok(projects)
         } else {
-            Err(TaigaClientError::AuthFailed(response.status()))
+            let status = response.status();
+            let err = match status {
+                StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                    TaigaClientError::Unauthorized(status)
+                }
+                _ => TaigaClientError::AuthFailed(status),
+            };
+            Err(err)
         }
     }
 
@@ -109,7 +134,15 @@ impl TaigaClient {
             let issues = response.json::<Vec<IssueDto>>().await?;
             Ok(issues)
         } else {
-            Err(TaigaClientError::AuthFailed(response.status()))
+            let status = response.status();
+            let err = match status {
+                StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                    TaigaClientError::Unauthorized(status)
+                }
+                _ => TaigaClientError::AuthFailed(status),
+            };
+            Err(err)
         }
     }
 }

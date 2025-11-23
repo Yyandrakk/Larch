@@ -9,6 +9,12 @@ pub enum TaigaClientError {
     #[error("Invalid URL: {0}")]
     UrlParse(#[from] url::ParseError),
 
+    #[error("The requested endpoint was not found (404).")]
+    EndpointNotFound(StatusCode),
+
+    #[error("Invalid credentials or insufficient permissions (401/403).")]
+    Unauthorized(StatusCode),
+
     #[error("Authentication failed with status: {0}")]
     AuthFailed(StatusCode),
 

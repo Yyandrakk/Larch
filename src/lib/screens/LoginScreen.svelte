@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/core';
+	import { t } from 'svelte-i18n';
 	import { Button } from '$lib/components/ui/button';
 	import {
 		Card,
@@ -12,6 +13,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Cog } from '@lucide/svelte';
+	import { CMD_LOGIN } from '$lib/commands.svelte';
 
 	let taigaUrl = $state('https://api.taiga.io');
 	let username = $state('');
@@ -28,7 +30,7 @@
 		loading = true;
 		errorMsg = null;
 		try {
-			const user = await invoke('login', {
+			const user = await invoke(CMD_LOGIN, {
 				apiUrl: taigaUrl,
 				username,
 				password
@@ -38,9 +40,9 @@
 		} catch (err) {
 			console.error('Login failed:', err);
 			if (err && typeof err === 'object' && 'TaigaClient' in err) {
-				errorMsg = err.TaigaClient as string;
+				errorMsg = `${$t('errors.prefix')} ${err.TaigaClient}`;
 			} else {
-				errorMsg = 'An unknown error occurred.';
+				errorMsg = $t('errors.unknown');
 			}
 		} finally {
 			loading = false;
@@ -52,8 +54,8 @@
 	<CardHeader>
 		<div class="flex items-center justify-between">
 			<div>
-				<CardTitle class="text-2xl">Larch</CardTitle>
-				<CardDescription>Login to your Taiga instance</CardDescription>
+				<CardTitle class="text-2xl">{$t('app.title')}</CardTitle>
+				<CardDescription>{$t('login.description')}</CardDescription>
 			</div>
 			<Button variant="ghost" size="icon" onclick={toggleAdvanced}>
 				<Cog class="h-6 w-6" />
@@ -63,7 +65,7 @@
 	<CardContent class="grid gap-4">
 		{#if showAdvanced}
 			<div class="grid gap-2">
-				<Label for="taiga-url">Taiga API URL</Label>
+				<Label for="taiga-url">{$t('login.apiUrlLabel')}</Label>
 				<Input
 					id="taiga-url"
 					bind:value={taigaUrl}
@@ -71,16 +73,16 @@
 					disabled={loading}
 				/>
 				<p class="text-muted-foreground text-xs">
-					Enter the base URL of your Taiga instance (without /api/v1).
+					{$t('login.apiUrlHint')}
 				</p>
 			</div>
 		{/if}
 		<div class="grid gap-2">
-			<Label for="username">Username</Label>
+			<Label for="username">{$t('login.usernameLabel')}</Label>
 			<Input id="username" bind:value={username} placeholder="user" disabled={loading} />
 		</div>
 		<div class="grid gap-2">
-			<Label for="password">Password</Label>
+			<Label for="password">{$t('login.passwordLabel')}</Label>
 			<Input id="password" type="password" bind:value={password} disabled={loading} />
 		</div>
 		{#if errorMsg}
@@ -105,7 +107,7 @@
 					></path>
 				</svg>
 			{/if}
-			{loading ? 'Logging in...' : 'Login'}
+			{loading ? $t('login.loadingButton') : $t('login.loginButton')}
 		</Button>
 	</CardFooter>
 </Card>
