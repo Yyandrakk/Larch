@@ -20,3 +20,6 @@ dist-ssr
 !.env.example
 /src-tauri/target/
 /src-tauri/gen/schemas
+crates/taiga-client/target
+GEMINI.md
+.gemini

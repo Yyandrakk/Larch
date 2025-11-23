@@ -8,6 +8,8 @@ pub mod prelude;
 use errors::TaigaClientError;
 use models::{AuthDetail, IssueDto, LoginRequest, Me, ProjectDto};
 
+const API_V1_PREFIX: &str = "api/v1/";
+
 #[derive(Debug, Clone)]
 pub struct TaigaClient {
     client: reqwest::Client,
@@ -22,12 +24,17 @@ impl TaigaClient {
         }
     }
 
+    fn build_url(&self, path: &str) -> Result<Url, TaigaClientError> {
+        let full_path = format!("{}{}", API_V1_PREFIX, path);
+        self.api_base_url.join(&full_path).map_err(Into::into)
+    }
+
     pub async fn login(
         &self,
         username: &str,
         password: &str,
     ) -> Result<AuthDetail, TaigaClientError> {
-        let url = self.api_base_url.join("auth")?;
+        let url = self.build_url("auth")?;
         let request_body = LoginRequest {
             r#type: "normal",
             username,
@@ -45,7 +52,7 @@ impl TaigaClient {
     }
 
     pub async fn get_me(&self, token: &Secret<String>) -> Result<Me, TaigaClientError> {
-        let url = self.api_base_url.join("users/me")?;
+        let url = self.build_url("users/me")?;
 
         let response = self
             .client
@@ -66,7 +73,7 @@ impl TaigaClient {
         &self,
         token: &Secret<String>,
     ) -> Result<Vec<ProjectDto>, TaigaClientError> {
-        let url = self.api_base_url.join("projects")?;
+        let url = self.build_url("projects")?;
 
         let response = self
             .client
@@ -88,7 +95,7 @@ impl TaigaClient {
         token: &Secret<String>,
         project_id: i64,
     ) -> Result<Vec<IssueDto>, TaigaClientError> {
-        let url = self.api_base_url.join("issues")?;
+        let url = self.build_url("issues")?;
 
         let response = self
             .client
