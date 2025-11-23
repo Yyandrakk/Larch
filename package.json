@@ -42,6 +42,7 @@
 		"@tauri-apps/api": "^2.5.0",
 		"@types/node": "^22.15.19",
 		"clsx": "^2.1.1",
+		"svelte-i18n": "^4.0.1",
 		"tailwind-merge": "^3.3.0",
 		"tailwindcss": "^4.1.7"
 	}
