@@ -1,5 +1,7 @@
-mod commands;
-use commands::default::{read, write};
+pub mod commands;
+pub mod domain;
+pub mod error;
+pub mod services;
 
 #[allow(clippy::missing_panics_doc)]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -15,7 +17,15 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![read, write])
+        .plugin(tauri_plugin_opener::init())
+        .invoke_handler(tauri::generate_handler![
+            commands::auth_commands::login,
+            commands::auth_commands::has_api_token,
+            commands::auth_commands::logout,
+            commands::user_commands::get_me,
+            commands::project_commands::get_projects,
+            commands::project_commands::list_issues
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
