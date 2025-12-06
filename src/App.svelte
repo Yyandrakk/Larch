@@ -5,6 +5,7 @@
 	import '$lib/i18n'; // Import to initialize
 	import LoginScreen from '$lib/screens/LoginScreen.svelte';
 	import ProjectConfigurationScreen from '$lib/screens/ProjectConfigurationScreen.svelte';
+	import DashboardScreen from '$lib/screens/DashboardScreen.svelte';
 	import { Toaster } from 'svelte-sonner';
 
 	type Screen = 'login' | 'config' | 'dashboard';
@@ -75,10 +76,7 @@
 		{:else if currentScreen === 'config'}
 			<ProjectConfigurationScreen onContinue={handleConfigContinue} />
 		{:else if currentScreen === 'dashboard'}
-			<div class="p-4">
-				<h1 class="text-2xl font-bold">Dashboard Placeholder</h1>
-				<p>Selected projects loaded.</p>
-			</div>
+			<DashboardScreen />
 		{/if}
 	</main>
 {/if}
