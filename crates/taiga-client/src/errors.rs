@@ -18,6 +18,9 @@ pub enum TaigaClientError {
     #[error("Authentication failed with status: {0}")]
     AuthFailed(StatusCode),
 
+    #[error("Serialization error: {0}")]
+    Serde(#[from] serde_json::Error),
+
     #[error("Unknown error")]
     Unknown,
 }

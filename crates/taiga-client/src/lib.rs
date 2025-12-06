@@ -36,6 +36,8 @@ impl TaigaClient {
         password: &str,
     ) -> Result<AuthDetail, TaigaClientError> {
         let url = self.build_url("auth")?;
+        log::info!("Sending login request to {}", url);
+
         let request_body = LoginRequest {
             r#type: "normal",
             username,
@@ -43,12 +45,15 @@ impl TaigaClient {
         };
 
         let response = self.client.post(url).json(&request_body).send().await?;
+        log::info!("Login response status: {}", response.status());
 
         if response.status().is_success() {
             let auth_detail = response.json::<AuthDetail>().await?;
             Ok(auth_detail)
         } else {
             let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            log::error!("Login failed. Status: {}, Body: {}", status, body);
             let err = match status {
                 StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
                 StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
@@ -62,6 +67,7 @@ impl TaigaClient {
 
     pub async fn get_me(&self, token: &Secret<String>) -> Result<Me, TaigaClientError> {
         let url = self.build_url("users/me")?;
+        log::info!("Fetching current user from {}", url);
 
         let response = self
             .client
@@ -70,11 +76,15 @@ impl TaigaClient {
             .send()
             .await?;
 
+        log::info!("Get Me response status: {}", response.status());
+
         if response.status().is_success() {
             let me = response.json::<Me>().await?;
             Ok(me)
         } else {
             let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            log::error!("Get Me failed. Status: {}, Body: {}", status, body);
             let err = match status {
                 StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
                 StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
@@ -89,21 +99,41 @@ impl TaigaClient {
     pub async fn get_projects(
         &self,
         token: &Secret<String>,
+        member_id: Option<i64>,
     ) -> Result<Vec<ProjectDto>, TaigaClientError> {
         let url = self.build_url("projects")?;
+        log::info!(
+            "Fetching projects from {} (member_id: {:?})",
+            url,
+            member_id
+        );
 
-        let response = self
-            .client
-            .get(url)
-            .bearer_auth(token.expose_secret())
-            .send()
-            .await?;
+        let mut request = self.client.get(url).bearer_auth(token.expose_secret());
+
+        if let Some(id) = member_id {
+            request = request.query(&[("member", id)]);
+        }
+
+        let response = request.send().await?;
+        log::info!("Get Projects response status: {}", response.status());
 
         if response.status().is_success() {
-            let projects = response.json::<Vec<ProjectDto>>().await?;
-            Ok(projects)
+            let body = response.text().await.unwrap_or_default();
+            match serde_json::from_str::<Vec<ProjectDto>>(&body) {
+                Ok(projects) => {
+                    log::info!("Found {} projects", projects.len());
+                    Ok(projects)
+                }
+                Err(e) => {
+                    log::error!("Failed to deserialize projects: {}", e);
+                    log::error!("Response body: {}", body);
+                    Err(TaigaClientError::Serde(e))
+                }
+            }
         } else {
             let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            log::error!("Get Projects failed. Status: {}, Body: {}", status, body);
             let err = match status {
                 StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
                 StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
@@ -121,6 +151,7 @@ impl TaigaClient {
         project_id: i64,
     ) -> Result<Vec<IssueDto>, TaigaClientError> {
         let url = self.build_url("issues")?;
+        log::info!("Fetching issues from {} for project {}", url, project_id);
 
         let response = self
             .client
@@ -130,11 +161,15 @@ impl TaigaClient {
             .send()
             .await?;
 
+        log::info!("List Issues response status: {}", response.status());
+
         if response.status().is_success() {
             let issues = response.json::<Vec<IssueDto>>().await?;
             Ok(issues)
         } else {
             let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            log::error!("List Issues failed. Status: {}, Body: {}", status, body);
             let err = match status {
                 StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
                 StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {

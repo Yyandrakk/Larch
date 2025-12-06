@@ -30,12 +30,20 @@ pub struct Me {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct UserShort {
+    pub id: i64,
+    pub username: String,
+    pub full_name_display: String,
+    pub photo: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct ProjectDto {
     pub id: i64,
     pub name: String,
     pub slug: String,
     pub description: String,
-    pub owner: i64,
+    pub owner: UserShort,
 }
 
 #[derive(Debug, Clone, Deserialize)]
