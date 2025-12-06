@@ -17,6 +17,12 @@ pub enum Error {
 
     #[error("URL parse error: {0}")]
     UrlParse(String),
+
+    #[error("Database error: {0}")]
+    Database(String),
+
+    #[error("IO error: {0}")]
+    Io(String),
 }
 
 impl From<taiga_client::errors::TaigaClientError> for Error {
@@ -46,6 +52,12 @@ impl From<tauri::Error> for Error {
 impl From<url::ParseError> for Error {
     fn from(e: url::ParseError) -> Self {
         Error::UrlParse(e.to_string())
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Error::Io(e.to_string())
     }
 }
 

@@ -30,3 +30,6 @@ anyhow = "1"
 secrecy = { version = "0.8", features = ["serde"] }
 taiga-client = { path = "../crates/taiga-client" }
 url = "2"
+sea-orm = { version = "1.0", features = [ "sqlx-sqlite", "runtime-tokio-rustls", "macros" ] }
+async-trait = "0.1"
+

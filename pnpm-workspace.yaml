@@ -1,4 +1,6 @@
 ignoredBuiltDependencies:
   - esbuild
+
 onlyBuiltDependencies:
+  - es5-ext
   - esbuild

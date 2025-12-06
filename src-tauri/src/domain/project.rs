@@ -17,7 +17,7 @@ impl From<ProjectDto> for Project {
             name: dto.name,
             slug: dto.slug,
             description: dto.description,
-            owner: dto.owner,
+            owner: dto.owner.id,
         }
     }
 }

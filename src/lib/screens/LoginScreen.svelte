@@ -22,6 +22,8 @@
 	let loading = $state(false);
 	let errorMsg = $state<string | null>(null);
 
+	let { onLoginSuccess } = $props<{ onLoginSuccess: () => void }>();
+
 	function toggleAdvanced() {
 		showAdvanced = !showAdvanced;
 	}
@@ -36,7 +38,7 @@
 				password
 			});
 			console.log('Login successful for user:', user);
-			// TODO: Navigate to the next screen (Project Selection)
+			onLoginSuccess();
 		} catch (err) {
 			console.error('Login failed:', err);
 			if (err && typeof err === 'object' && 'TaigaClient' in err) {
