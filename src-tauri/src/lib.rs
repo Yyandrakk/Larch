@@ -19,7 +19,9 @@ pub fn run() {
                         .level(log::LevelFilter::Info)
                         .build(),
                 )?;
+                app.handle().plugin(tauri_plugin_mcp_bridge::init())?;
             }
+
             let conn = tauri::async_runtime::block_on(services::db::init_db(app.handle()))?;
             log::info!("Database initialized");
 
