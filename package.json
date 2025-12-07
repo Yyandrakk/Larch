@@ -39,6 +39,7 @@
 		"vite": "^6.3.5"
 	},
 	"dependencies": {
+		"@hypothesi/tauri-plugin-mcp-bridge": "^0.4.0",
 		"@tailwindcss/vite": "^4.1.7",
 		"@tauri-apps/api": "^2.5.0",
 		"@types/node": "^22.15.19",

@@ -32,4 +32,5 @@ taiga-client = { path = "../crates/taiga-client" }
 url = "2"
 sea-orm = { version = "1.0", features = [ "sqlx-sqlite", "runtime-tokio-rustls", "macros" ] }
 async-trait = "0.1"
+tauri-plugin-mcp-bridge = "0.4.0"
 
