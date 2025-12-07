@@ -14,5 +14,27 @@
   "errors": {
     "unknown": "An unknown error occurred.",
     "prefix": "Error:"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "searchPlaceholder": "Search issues...",
+    "refresh": "Refresh",
+    "noIssues": "No issues found."
+  },
+  "table": {
+    "subject": "Subject",
+    "status": "Status",
+    "project": "Project",
+    "assignedTo": "Assigned To",
+    "unassigned": "Unassigned"
+  },
+  "filters": {
+    "filter": "Filter",
+    "reset": "Reset",
+    "projects": "Projects",
+    "status": "Status",
+    "assignee": "Assignee",
+    "include": "Is",
+    "exclude": "Is Not"
   }
 }

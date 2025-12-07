@@ -7,7 +7,7 @@ pub mod models;
 pub mod prelude;
 
 use errors::TaigaClientError;
-use models::{AuthDetail, IssueDto, LoginRequest, Me, ProjectDto};
+use models::{AuthDetail, IssueDto, LoginRequest, Me, ProjectDto, ProjectListEntryDto};
 
 const API_V1_PREFIX: &str = "api/v1/";
 
@@ -96,11 +96,46 @@ impl TaigaClient {
         }
     }
 
+    pub async fn get_project(
+        &self,
+        token: &Secret<String>,
+        project_id: i64,
+    ) -> Result<ProjectDto, TaigaClientError> {
+        let url = self.build_url(&format!("projects/{}", project_id))?;
+        log::info!("Fetching project {} from {}", project_id, url);
+
+        let response = self
+            .client
+            .get(url)
+            .bearer_auth(token.expose_secret())
+            .send()
+            .await?;
+
+        log::info!("Get Project response status: {}", response.status());
+
+        if response.status().is_success() {
+            let project = response.json::<ProjectDto>().await?;
+            Ok(project)
+        } else {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            log::error!("Get Project failed. Status: {}, Body: {}", status, body);
+            let err = match status {
+                StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                    TaigaClientError::Unauthorized(status)
+                }
+                _ => TaigaClientError::AuthFailed(status),
+            };
+            Err(err)
+        }
+    }
+
     pub async fn get_projects(
         &self,
         token: &Secret<String>,
         member_id: Option<i64>,
-    ) -> Result<Vec<ProjectDto>, TaigaClientError> {
+    ) -> Result<Vec<ProjectListEntryDto>, TaigaClientError> {
         let url = self.build_url("projects")?;
         log::info!(
             "Fetching projects from {} (member_id: {:?})",
@@ -118,18 +153,9 @@ impl TaigaClient {
         log::info!("Get Projects response status: {}", response.status());
 
         if response.status().is_success() {
-            let body = response.text().await.unwrap_or_default();
-            match serde_json::from_str::<Vec<ProjectDto>>(&body) {
-                Ok(projects) => {
-                    log::info!("Found {} projects", projects.len());
-                    Ok(projects)
-                }
-                Err(e) => {
-                    log::error!("Failed to deserialize projects: {}", e);
-                    log::error!("Response body: {}", body);
-                    Err(TaigaClientError::Serde(e))
-                }
-            }
+            let projects = response.json::<Vec<ProjectListEntryDto>>().await?;
+            log::info!("Found {} projects", projects.len());
+            Ok(projects)
         } else {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
@@ -149,17 +175,22 @@ impl TaigaClient {
         &self,
         token: &Secret<String>,
         project_id: i64,
+        filters: Option<Vec<(String, String)>>,
     ) -> Result<Vec<IssueDto>, TaigaClientError> {
         let url = self.build_url("issues")?;
         log::info!("Fetching issues from {} for project {}", url, project_id);
 
-        let response = self
+        let mut request = self
             .client
             .get(url)
-            .query(&[("project", project_id)])
-            .bearer_auth(token.expose_secret())
-            .send()
-            .await?;
+            .query(&[("project", project_id.to_string())])
+            .bearer_auth(token.expose_secret());
+
+        if let Some(f) = filters {
+            request = request.query(&f);
+        }
+
+        let response = request.send().await?;
 
         log::info!("List Issues response status: {}", response.status());
 
