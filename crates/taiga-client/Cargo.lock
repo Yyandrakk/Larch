@@ -1170,6 +1170,7 @@ dependencies = [
 name = "taiga-client"
 version = "0.1.0"
 dependencies = [
+ "log",
  "reqwest",
  "secrecy",
  "serde",

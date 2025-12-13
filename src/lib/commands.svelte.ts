@@ -11,3 +11,7 @@ export const CMD_GET_SELECTED_PROJECTS = 'get_selected_projects';
 export const CMD_SAVE_SELECTED_PROJECTS = 'save_selected_projects';
 export const CMD_GET_AGGREGATED_ISSUES = 'get_aggregated_issues';
 export const CMD_GET_PROJECT_METADATA = 'get_project_metadata';
+
+// Issue Detail Commands
+export const CMD_GET_ISSUE_DETAIL = 'get_issue_detail';
+export const CMD_GET_ISSUE_HISTORY = 'get_issue_history';

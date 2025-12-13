@@ -19,6 +19,15 @@ The primary goal is to provide a user with a single, actionable interface where 
 * **Taiga Instance:** A specific deployment of Taiga, either the official cloud version (`taiga.io`) or a self-hosted (on-premise) server.
 * **Project:** A standard project workspace within a Taiga Instance.
 * **Issue:** A ticket within the "Issues" module of a Taiga Project.
+* **Issue Status:** A named state for issues configured per-project (e.g., "New", "In Progress", "Need info", "Closed", "Rejected"). Each status has:
+    * A `name` (user-defined)
+    * A `color` for visual identification
+    * An `is_closed` boolean flag indicating if this status represents a closed/resolved state
+* **is_closed:** A boolean flag on Issue Status that indicates whether the status represents a "closed" state. Multiple statuses can be "open" (e.g., New, In Progress) or "closed" (e.g., Closed, Rejected). This is distinct from the status name itself.
+* **Issue Type:** A classification category (e.g., "Bug", "Enhancement", "Question") with a name and color, configured per-project.
+* **Severity:** The impact level of an issue (e.g., "Critical", "Normal", "Minor") with a name and color, configured per-project.
+* **Priority:** The importance ranking of an issue (e.g., "High", "Normal", "Low") with a name and color, configured per-project.
+* **Attachments:** Files attached to an issue, including images embedded in descriptions. Each has a URL, name, size, and optional thumbnail.
 
 ---
 

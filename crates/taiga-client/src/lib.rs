@@ -7,7 +7,10 @@ pub mod models;
 pub mod prelude;
 
 use errors::TaigaClientError;
-use models::{AuthDetail, IssueDto, LoginRequest, Me, ProjectDto, ProjectListEntryDto};
+use models::{
+    AuthDetail, IssueDetailDto, IssueDto, IssueHistoryEntryDto, LoginRequest, Me, ProjectDto,
+    ProjectListEntryDto,
+};
 
 const API_V1_PREFIX: &str = "api/v1/";
 
@@ -201,6 +204,97 @@ impl TaigaClient {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             log::error!("List Issues failed. Status: {}, Body: {}", status, body);
+            let err = match status {
+                StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                    TaigaClientError::Unauthorized(status)
+                }
+                _ => TaigaClientError::AuthFailed(status),
+            };
+            Err(err)
+        }
+    }
+
+    /// Fetch detailed issue information by ID
+    /// GET /api/v1/issues/{issue_id}
+    pub async fn get_issue(
+        &self,
+        token: &Secret<String>,
+        issue_id: i64,
+    ) -> Result<IssueDetailDto, TaigaClientError> {
+        let url = self.build_url(&format!("issues/{}", issue_id))?;
+        log::info!("Fetching issue detail {} from {}", issue_id, url);
+
+        let response = self
+            .client
+            .get(url)
+            .bearer_auth(token.expose_secret())
+            .send()
+            .await?;
+
+        log::info!("Get Issue response status: {}", response.status());
+
+        if response.status().is_success() {
+            // Get body as text first for debugging
+            let body = response.text().await?;
+
+            // Try to parse
+            match serde_json::from_str::<IssueDetailDto>(&body) {
+                Ok(issue) => Ok(issue),
+                Err(e) => {
+                    log::error!("Failed to parse issue detail: {}", e);
+                    log::error!(
+                        "Raw response body (first 2000 chars): {}",
+                        &body[..body.len().min(2000)]
+                    );
+                    Err(TaigaClientError::Serde(e))
+                }
+            }
+        } else {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            log::error!("Get Issue failed. Status: {}, Body: {}", status, body);
+            let err = match status {
+                StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                    TaigaClientError::Unauthorized(status)
+                }
+                _ => TaigaClientError::AuthFailed(status),
+            };
+            Err(err)
+        }
+    }
+
+    /// Fetch issue history (comments and changes)
+    /// GET /api/v1/history/issue/{issue_id}
+    pub async fn get_issue_history(
+        &self,
+        token: &Secret<String>,
+        issue_id: i64,
+    ) -> Result<Vec<IssueHistoryEntryDto>, TaigaClientError> {
+        let url = self.build_url(&format!("history/issue/{}", issue_id))?;
+        log::info!("Fetching issue history {} from {}", issue_id, url);
+
+        let response = self
+            .client
+            .get(url)
+            .bearer_auth(token.expose_secret())
+            .send()
+            .await?;
+
+        log::info!("Get Issue History response status: {}", response.status());
+
+        if response.status().is_success() {
+            let history = response.json::<Vec<IssueHistoryEntryDto>>().await?;
+            Ok(history)
+        } else {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            log::error!(
+                "Get Issue History failed. Status: {}, Body: {}",
+                status,
+                body
+            );
             let err = match status {
                 StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
                 StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
