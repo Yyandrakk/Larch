@@ -60,7 +60,8 @@ pub fn run() {
             commands::project_commands::get_aggregated_issues,
             commands::project_commands::get_project_metadata,
             commands::issue_commands::get_issue_detail,
-            commands::issue_commands::get_issue_history
+            commands::issue_commands::get_issue_history,
+            commands::issue_commands::change_issue_status
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

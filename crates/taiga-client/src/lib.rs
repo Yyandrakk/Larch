@@ -305,4 +305,69 @@ impl TaigaClient {
             Err(err)
         }
     }
+
+    /// Patch an issue (e.g., change status)
+    /// PATCH /api/v1/issues/{issue_id}
+    /// Uses version field for optimistic locking - returns VersionConflict on 412
+    pub async fn patch_issue(
+        &self,
+        token: &Secret<String>,
+        issue_id: i64,
+        request: models::PatchIssueRequest,
+    ) -> Result<IssueDetailDto, TaigaClientError> {
+        let url = self.build_url(&format!("issues/{}", issue_id))?;
+        log::info!(
+            "Patching issue {} at {} with version {}",
+            issue_id,
+            url,
+            request.version
+        );
+
+        let response = self
+            .client
+            .patch(url)
+            .bearer_auth(token.expose_secret())
+            .json(&request)
+            .send()
+            .await?;
+
+        log::info!("Patch Issue response status: {}", response.status());
+
+        if response.status().is_success() {
+            let body = response.text().await?;
+            match serde_json::from_str::<IssueDetailDto>(&body) {
+                Ok(issue) => Ok(issue),
+                Err(e) => {
+                    log::error!("Failed to parse patched issue: {}", e);
+                    log::error!(
+                        "Raw response body (first 2000 chars): {}",
+                        &body[..body.len().min(2000)]
+                    );
+                    Err(TaigaClientError::Serde(e))
+                }
+            }
+        } else {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            log::error!("Patch Issue failed. Status: {}, Body: {}", status, body);
+
+            // Check for version conflict - Taiga returns 400 with body containing "version" error
+            // instead of the standard 412 Precondition Failed
+            let is_version_conflict = body.to_lowercase().contains("version")
+                && (body.contains("doesn't match") || body.contains("does not match"));
+
+            let err = if is_version_conflict || status == StatusCode::PRECONDITION_FAILED {
+                TaigaClientError::VersionConflict(status)
+            } else {
+                match status {
+                    StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
+                    StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                        TaigaClientError::Unauthorized(status)
+                    }
+                    _ => TaigaClientError::AuthFailed(status),
+                }
+            };
+            Err(err)
+        }
+    }
 }

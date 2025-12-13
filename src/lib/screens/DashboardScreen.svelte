@@ -97,6 +97,15 @@
 		sheetOpen = true;
 	}
 
+	async function handleIssueUpdated() {
+		// Silently refresh the issues table after a successful update
+		try {
+			issues = await invoke(CMD_GET_AGGREGATED_ISSUES, { filters });
+		} catch (error) {
+			console.error('Failed to refresh issues after update:', error);
+		}
+	}
+
 	onMount(() => {
 		loadData();
 	});
@@ -132,4 +141,8 @@
 </div>
 
 <!-- Issue Detail Sheet -->
-<IssueDetailSheet bind:issueId={selectedIssueId} bind:open={sheetOpen} />
+<IssueDetailSheet
+	bind:issueId={selectedIssueId}
+	bind:open={sheetOpen}
+	onIssueUpdated={handleIssueUpdated}
+/>

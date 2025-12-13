@@ -1,10 +1,21 @@
 <script lang="ts">
-	import type { IssueDetail } from '$lib/types';
+	import type { IssueDetail, IssueStatus } from '$lib/types';
 	import { Badge } from '$lib/components/ui/badge';
 	import * as Avatar from '$lib/components/ui/avatar';
-	import { User, Calendar, Clock, AlertTriangle } from '@lucide/svelte';
+	import * as Select from '$lib/components/ui/select';
+	import { User, Calendar, Clock, AlertTriangle, Loader2 } from '@lucide/svelte';
 
-	let { issue }: { issue: IssueDetail } = $props();
+	let {
+		issue,
+		statuses = [],
+		statusUpdating = false,
+		onStatusChange
+	}: {
+		issue: IssueDetail;
+		statuses?: IssueStatus[];
+		statusUpdating?: boolean;
+		onStatusChange?: (statusId: number) => void;
+	} = $props();
 
 	function formatDate(dateStr: string): string {
 		const date = new Date(dateStr);
@@ -27,6 +38,15 @@
 			.toUpperCase()
 			.slice(0, 2);
 	}
+
+	function handleStatusChange(value: string | undefined) {
+		if (value && onStatusChange) {
+			onStatusChange(parseInt(value, 10));
+		}
+	}
+
+	// Check if we can edit (have statuses and callback)
+	let canEditStatus = $derived(statuses.length > 0 && onStatusChange !== undefined);
 </script>
 
 <div class="space-y-4">
@@ -35,12 +55,50 @@
 		<!-- Status -->
 		<div>
 			<span class="text-muted-foreground mb-1 block">Status</span>
-			<Badge
-				variant="outline"
-				style="border-color: {issue.status_color}; color: {issue.status_color}"
-			>
-				{issue.status_name}
-			</Badge>
+			{#if canEditStatus}
+				<!-- Key forces Select to reset when issue.status_id changes (e.g., after error) -->
+				{#key issue.status_id}
+					<Select.Root
+						type="single"
+						value={issue.status_id.toString()}
+						onValueChange={handleStatusChange}
+						disabled={statusUpdating}
+					>
+						<Select.Trigger
+							class="h-8 w-full max-w-[200px]"
+							style="border-color: {issue.status_color}"
+						>
+							{#if statusUpdating}
+								<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+							{/if}
+							<span style="color: {issue.status_color}">{issue.status_name}</span>
+						</Select.Trigger>
+						<Select.Content>
+							{#each statuses as status (status.id)}
+								<Select.Item value={status.id.toString()}>
+									<div class="flex items-center gap-2">
+										<div
+											class="h-3 w-3 rounded-full"
+											style="background-color: {status.color}"
+										></div>
+										<span>{status.name}</span>
+										{#if status.is_closed}
+											<span class="text-muted-foreground text-xs">(Closed)</span>
+										{/if}
+									</div>
+								</Select.Item>
+							{/each}
+						</Select.Content>
+					</Select.Root>
+				{/key}
+			{:else}
+				<Badge
+					variant="outline"
+					style="border-color: {issue.status_color}; color: {issue.status_color}"
+				>
+					{issue.status_name}
+				</Badge>
+			{/if}
 		</div>
 
 		<!-- Project -->

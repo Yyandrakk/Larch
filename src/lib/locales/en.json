@@ -73,6 +73,10 @@
     "edited": "edited",
     "previousIssue": "Previous",
     "nextIssue": "Next",
-    "tags": "Tags"
+    "tags": "Tags",
+    "statusUpdated": "Status updated successfully",
+    "statusUpdateError": "Failed to update status",
+    "versionConflict": "This issue was modified by someone else. Please reload and try again.",
+    "reload": "Reload"
   }
 }

@@ -15,3 +15,4 @@ export const CMD_GET_PROJECT_METADATA = 'get_project_metadata';
 // Issue Detail Commands
 export const CMD_GET_ISSUE_DETAIL = 'get_issue_detail';
 export const CMD_GET_ISSUE_HISTORY = 'get_issue_history';
+export const CMD_CHANGE_ISSUE_STATUS = 'change_issue_status';
