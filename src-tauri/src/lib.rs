@@ -19,7 +19,9 @@ pub fn run() {
                         .level(log::LevelFilter::Info)
                         .build(),
                 )?;
+                app.handle().plugin(tauri_plugin_mcp_bridge::init())?;
             }
+
             let conn = tauri::async_runtime::block_on(services::db::init_db(app.handle()))?;
             log::info!("Database initialized");
 
@@ -56,7 +58,9 @@ pub fn run() {
             commands::project_commands::get_selected_projects,
             commands::project_commands::save_selected_projects,
             commands::project_commands::get_aggregated_issues,
-            commands::project_commands::get_project_metadata
+            commands::project_commands::get_project_metadata,
+            commands::issue_commands::get_issue_detail,
+            commands::issue_commands::get_issue_history
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

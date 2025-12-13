@@ -10,6 +10,7 @@
 	import type { Issue, Project, FilterObject, ProjectMetadata } from '$lib/types';
 	import IssueTable from '$lib/components/dashboard/IssueTable.svelte';
 	import FilterBar from '$lib/components/dashboard/FilterBar.svelte';
+	import { IssueDetailSheet } from '$lib/components/issue-detail';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { RefreshCw, Search } from '@lucide/svelte';
@@ -22,6 +23,10 @@
 	let filters = $state<FilterObject>({});
 	let loading = $state(false);
 	let searchQuery = $state('');
+
+	// Issue Detail Sheet state
+	let selectedIssueId = $state<number | null>(null);
+	let sheetOpen = $state(false);
 
 	let filteredIssues = $derived(
 		issues.filter(
@@ -87,6 +92,11 @@
 		refreshIssues();
 	}
 
+	function handleIssueSelect(issueId: number) {
+		selectedIssueId = issueId;
+		sheetOpen = true;
+	}
+
 	onMount(() => {
 		loadData();
 	});
@@ -117,6 +127,9 @@
 
 	<div class="flex-1 space-y-4 p-8 pt-6">
 		<FilterBar {projects} {metadata} {filters} onApply={handleFilterChange} />
-		<IssueTable issues={filteredIssues} {projects} />
+		<IssueTable issues={filteredIssues} {projects} onIssueSelect={handleIssueSelect} />
 	</div>
 </div>
+
+<!-- Issue Detail Sheet -->
+<IssueDetailSheet bind:issueId={selectedIssueId} bind:open={sheetOpen} />

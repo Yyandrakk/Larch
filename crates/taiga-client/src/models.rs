@@ -100,3 +100,157 @@ pub struct IssueDto {
     pub assigned_to: Option<i64>,
     pub assigned_to_extra_info: Option<UserExtraInfo>,
 }
+
+// ============================================================================
+// Issue Detail DTOs (GET /api/v1/issues/{id})
+// ============================================================================
+
+/// Project info embedded in issue detail response
+#[derive(Debug, Clone, Deserialize)]
+pub struct ProjectExtraInfo {
+    pub id: i64,
+    pub name: String,
+    pub slug: String,
+    pub logo_small_url: Option<String>,
+}
+
+/// Attachment detail object
+#[derive(Debug, Clone, Deserialize)]
+pub struct AttachmentDto {
+    pub id: i64,
+    pub name: String,
+    pub url: String,
+    pub attached_file: String,
+    pub thumbnail_card_url: Option<String>,
+    pub preview_url: Option<String>,
+    pub size: i64,
+    pub created_date: String,
+    pub is_deprecated: bool,
+    pub description: Option<String>,
+    pub order: i64,
+}
+
+/// Navigation to adjacent issues
+#[derive(Debug, Clone, Deserialize)]
+pub struct IssueNeighbors {
+    pub next: Option<IssueNeighborDto>,
+    pub previous: Option<IssueNeighborDto>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct IssueNeighborDto {
+    pub id: i64,
+    #[serde(rename = "ref")]
+    pub ref_: i64,
+    pub subject: String,
+}
+
+/// Full issue detail from GET /api/v1/issues/{id}
+#[derive(Debug, Clone, Deserialize)]
+pub struct IssueDetailDto {
+    pub id: i64,
+    #[serde(rename = "ref")]
+    pub ref_: i64,
+    pub subject: String,
+    pub description: Option<String>,
+    pub description_html: Option<String>,
+    pub project: i64,
+    pub project_extra_info: ProjectExtraInfo,
+    pub status: i64,
+    pub status_extra_info: Option<IssueStatusExtraInfo>,
+    #[serde(rename = "type")]
+    pub type_: Option<i64>,
+    pub priority: Option<i64>,
+    pub severity: Option<i64>,
+    pub owner: Option<i64>,
+    pub owner_extra_info: Option<UserExtraInfo>,
+    pub assigned_to: Option<i64>,
+    pub assigned_to_extra_info: Option<UserExtraInfo>,
+    #[serde(default)]
+    pub tags: serde_json::Value, // [[name, color|null], ...] - color can be null
+    #[serde(default)]
+    pub attachments: Vec<AttachmentDto>,
+    #[serde(default)]
+    pub watchers: Vec<i64>,
+    #[serde(default)]
+    pub total_watchers: i64,
+    #[serde(default)]
+    pub is_closed: bool,
+    #[serde(default)]
+    pub is_blocked: bool,
+    pub blocked_note: Option<String>,
+    pub due_date: Option<String>,
+    pub due_date_status: Option<String>,
+    pub created_date: String,
+    pub modified_date: String,
+    pub finished_date: Option<String>,
+    pub version: i64,
+    pub neighbors: Option<IssueNeighbors>,
+}
+
+// ============================================================================
+// Issue History DTOs (GET /api/v1/history/issue/{id})
+// ============================================================================
+
+/// User info in history entries
+#[derive(Debug, Clone, Deserialize)]
+pub struct HistoryUserDto {
+    pub pk: i64,
+    pub username: String,
+    pub name: String,
+    pub photo: Option<String>,
+    pub gravatar_id: Option<String>,
+    pub is_active: bool,
+}
+
+/// History entry from GET /api/v1/history/issue/{id}
+#[derive(Debug, Clone, Deserialize)]
+pub struct IssueHistoryEntryDto {
+    pub id: String,
+    pub user: HistoryUserDto,
+    pub created_at: String,
+    pub comment: String,
+    pub comment_html: String,
+    pub delete_comment_date: Option<String>,
+    pub delete_comment_user: Option<HistoryUserDto>,
+    pub edit_comment_date: Option<String>,
+    #[serde(rename = "type")]
+    pub entry_type: i32, // 1 = change, 2 = comment
+    pub diff: Option<serde_json::Value>,
+    pub values_diff: Option<serde_json::Value>,
+    pub is_hidden: Option<bool>,
+}
+
+// ============================================================================
+// Project Metadata DTOs (Type, Priority, Severity)
+// ============================================================================
+
+/// Issue type detail (from project)
+#[derive(Debug, Clone, Deserialize)]
+pub struct IssueTypeDto {
+    pub id: i64,
+    pub name: String,
+    pub color: String,
+    pub order: i64,
+    pub project: i64,
+}
+
+/// Priority detail (from project)
+#[derive(Debug, Clone, Deserialize)]
+pub struct PriorityDto {
+    pub id: i64,
+    pub name: String,
+    pub color: String,
+    pub order: i64,
+    pub project: i64,
+}
+
+/// Severity detail (from project)
+#[derive(Debug, Clone, Deserialize)]
+pub struct SeverityDto {
+    pub id: i64,
+    pub name: String,
+    pub color: String,
+    pub order: i64,
+    pub project: i64,
+}

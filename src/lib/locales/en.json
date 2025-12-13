@@ -15,6 +15,10 @@
     "unknown": "An unknown error occurred.",
     "prefix": "Error:"
   },
+  "common": {
+    "retry": "Retry",
+    "close": "Close"
+  },
   "dashboard": {
     "title": "Dashboard",
     "searchPlaceholder": "Search issues...",
@@ -36,5 +40,39 @@
     "assignee": "Assignee",
     "include": "Is",
     "exclude": "Is Not"
+  },
+  "issueDetail": {
+    "loading": "Loading issue...",
+    "error": "Failed to load issue",
+    "status": "Status",
+    "statusOpen": "Open",
+    "statusClosed": "Closed",
+    "type": "Type",
+    "priority": "Priority",
+    "severity": "Severity",
+    "project": "Project",
+    "assignee": "Assignee",
+    "reporter": "Reporter",
+    "unassigned": "Unassigned",
+    "watchers": "Watchers",
+    "watchersCount": "{count} watching",
+    "dueDate": "Due date",
+    "dueDateOverdue": "Overdue",
+    "createdAt": "Created",
+    "modifiedAt": "Last updated",
+    "description": "Description",
+    "noDescription": "No description provided",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "attachments": "Attachments",
+    "attachmentsCount": "{count} files",
+    "noAttachments": "No attachments",
+    "comments": "Comments",
+    "commentsCount": "{count} comments",
+    "noComments": "No comments yet",
+    "edited": "edited",
+    "previousIssue": "Previous",
+    "nextIssue": "Next",
+    "tags": "Tags"
   }
 }

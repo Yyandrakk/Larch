@@ -4,10 +4,24 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { t } from 'svelte-i18n';
 
-	let { issues = [], projects = [] } = $props<{ issues: Issue[]; projects: Project[] }>();
+	let {
+		issues = [],
+		projects = [],
+		onIssueSelect
+	}: {
+		issues: Issue[];
+		projects: Project[];
+		onIssueSelect?: (issueId: number) => void;
+	} = $props();
 
 	function getProjectName(id: number) {
 		return projects.find((p: Project) => p.id === id)?.name || id;
+	}
+
+	function handleRowClick(issueId: number) {
+		if (onIssueSelect) {
+			onIssueSelect(issueId);
+		}
 	}
 </script>
 
@@ -30,7 +44,18 @@
 				</Table.Row>
 			{:else}
 				{#each issues as issue (issue.id)}
-					<Table.Row>
+					<Table.Row
+						class="hover:bg-muted/50 focus:ring-ring cursor-pointer transition-colors focus:ring-2 focus:outline-none"
+						role="button"
+						tabindex="0"
+						onclick={() => handleRowClick(issue.id)}
+						onkeydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								handleRowClick(issue.id);
+							}
+						}}
+					>
 						<Table.Cell class="font-medium">{issue.subject}</Table.Cell>
 						<Table.Cell>
 							<Badge
