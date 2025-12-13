@@ -259,7 +259,7 @@ pub struct SeverityDto {
 // Issue Patch Request DTOs (PATCH /api/v1/issues/{id})
 // ============================================================================
 
-/// Request body for patching an issue (e.g., status change)
+/// Request body for patching an issue (e.g., status change, add comment)
 #[derive(Debug, Clone, Serialize)]
 pub struct PatchIssueRequest {
     /// The version field for optimistic locking (required by Taiga)
@@ -267,4 +267,7 @@ pub struct PatchIssueRequest {
     /// The new status ID (optional - only include if changing status)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<i64>,
+    /// A comment to add to the issue (optional - only include if adding a comment)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
 }

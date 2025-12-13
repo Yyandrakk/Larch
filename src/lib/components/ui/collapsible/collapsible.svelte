@@ -1,16 +1,6 @@
 <script lang="ts">
-	import { Collapsible as CollapsiblePrimitive } from "bits-ui";
-
-	let {
-		ref = $bindable(null),
-		open = $bindable(false),
-		...restProps
-	}: CollapsiblePrimitive.RootProps = $props();
-</script>
-
-<script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { Collapsible as CollapsiblePrimitive } from "bits-ui";
+	import { Collapsible as CollapsiblePrimitive } from 'bits-ui';
 
 	let {
 		ref = $bindable(null),

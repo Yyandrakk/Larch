@@ -43,6 +43,23 @@ You are responsible for keeping the documentation "alive".
 3.  **Update Loop:** After we implement a feature or change a technical decision, you must strictly remind the user to update the relevant markdown files or generate the text for the update yourself.
 
 ## 6. Coding Standards
-* **Rust:** Idiomatic Rust. Prefer `expect` with clear messages over `unwrap`. Strict error handling.
-* **Svelte:** Follow the practices defined in the design doc (shadcn-svelte, tailwind).
-* **Tauri:** Adhere to V2 security capabilities.
+
+### Rust
+* Idiomatic Rust. Prefer `expect` with clear messages over `unwrap`. Strict error handling.
+
+### Svelte
+* Follow the practices defined in the design doc (shadcn-svelte, tailwind).
+* **Svelte 5 Runes:** Use `$state`, `$derived`, `$effect`, `$props`, and `$bindable` - never legacy Svelte 4 stores.
+* **DOM Timing:** Use `await tick()` from `'svelte'` instead of `setTimeout(..., 0)`.
+* **Variable Shadowing:** Never shadow props or outer variables inside functions.
+* **Code Duplication:** Extract common logic into helper functions.
+
+### Tauri
+* Adhere to V2 security capabilities.
+
+### i18n
+* **All user-facing strings** must use `$t()` from svelte-i18n. No hardcoded strings.
+
+### Security
+* **XSS Prevention:** When rendering user-provided markdown/HTML, escape HTML entities FIRST.
+* Use `{@html ...}` sparingly and only with sanitized content.

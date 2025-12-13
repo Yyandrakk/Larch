@@ -4,7 +4,8 @@
 		CMD_GET_ISSUE_DETAIL,
 		CMD_GET_ISSUE_HISTORY,
 		CMD_CHANGE_ISSUE_STATUS,
-		CMD_GET_PROJECT_METADATA
+		CMD_GET_PROJECT_METADATA,
+		CMD_ADD_ISSUE_COMMENT
 	} from '$lib/commands.svelte';
 	import type { IssueDetail, HistoryEntry, IssueStatus, ProjectMetadata } from '$lib/types';
 	import * as Sheet from '$lib/components/ui/sheet';
@@ -34,6 +35,8 @@
 	let statuses = $state<IssueStatus[]>([]);
 	let loading = $state(false);
 	let statusUpdating = $state(false);
+	let commentSubmitting = $state(false);
+	let commentText = $state('');
 	let error = $state<string | null>(null);
 	let hasConflict = $state(false);
 
@@ -41,6 +44,13 @@
 	$effect(() => {
 		if (issueId && open) {
 			loadIssueData(issueId);
+		}
+	});
+
+	// Clear comment text when issue changes
+	$effect(() => {
+		if (issueId) {
+			commentText = '';
 		}
 	});
 
@@ -98,6 +108,20 @@
 		}
 	}
 
+	async function reloadHistory() {
+		if (!issueId) return;
+		try {
+			history = await invoke<HistoryEntry[]>(CMD_GET_ISSUE_HISTORY, { issueId });
+		} catch (e) {
+			console.warn('Failed to reload history:', e);
+		}
+	}
+
+	function isVersionConflict(e: unknown): boolean {
+		const errorStr = typeof e === 'string' ? e : JSON.stringify(e);
+		return errorStr.includes('VersionConflict') || errorStr.includes('version conflict');
+	}
+
 	async function handleStatusChange(newStatusId: number) {
 		if (!issue) return;
 
@@ -130,18 +154,7 @@
 		} catch (e) {
 			console.error('Failed to update status:', e);
 
-			// Check if it's a version conflict error
-			// The error comes as an object like { VersionConflict: null } or a string containing "VersionConflict"
-			// Check for version conflict
-			let isConflict = false;
-			if (e && typeof e === 'object' && 'VersionConflict' in e) {
-				isConflict = true;
-			} else {
-				const errorStr = typeof e === 'string' ? e : JSON.stringify(e);
-				isConflict = errorStr.includes('VersionConflict') || errorStr.includes('version conflict');
-			}
-
-			if (isConflict) {
+			if (isVersionConflict(e)) {
 				hasConflict = true;
 				toast.error(
 					$t('issueDetail.versionConflict') ||
@@ -161,16 +174,80 @@
 		}
 	}
 
-	function handleReload() {
-		if (issueId) {
-			loadIssueData(issueId);
+	async function handleAddComment(text: string) {
+		if (!issue || !text.trim()) return;
+
+		commentSubmitting = true;
+		hasConflict = false;
+
+		try {
+			const updatedIssue = await invoke<IssueDetail>(CMD_ADD_ISSUE_COMMENT, {
+				issueId: issue.id,
+				comment: text,
+				version: issue.version
+			});
+
+			// Update local issue state with the response (includes new version)
+			issue = updatedIssue;
+
+			// Reload history to show the new comment
+			await reloadHistory();
+
+			// Clear comment text only on success
+			commentText = '';
+
+			toast.success($t('issueDetail.commentAdded') || 'Comment added successfully');
+
+			// Notify parent to refresh if needed
+			if (onIssueUpdated) {
+				onIssueUpdated();
+			}
+		} catch (e) {
+			console.error('Failed to add comment:', e);
+
+			// DON'T clear commentText on error - preserve user's text
+			if (isVersionConflict(e)) {
+				hasConflict = true;
+				toast.error(
+					$t('issueDetail.versionConflict') ||
+						'This issue was modified by someone else. Please reload and try again.',
+					{
+						action: {
+							label: $t('issueDetail.reload') || 'Reload',
+							onClick: () => handleReloadWithConfirmation()
+						}
+					}
+				);
+			} else {
+				toast.error($t('issueDetail.commentError') || 'Failed to add comment');
+			}
+		} finally {
+			commentSubmitting = false;
 		}
 	}
 
-	// Filter history to only show comments
-	let comments = $derived(
-		history.filter((h) => h.entry_type === 'comment' && h.comment && !h.is_deleted)
-	);
+	function handleReload() {
+		handleReloadWithConfirmation();
+	}
+
+	function handleReloadWithConfirmation() {
+		if (!issueId) return;
+
+		// If user has unsaved comment, confirm before reloading
+		if (commentText && commentText.trim()) {
+			const confirmed = confirm(
+				$t('issueDetail.unsavedComment') || 'You have an unsaved comment. Reload anyway?'
+			);
+			if (!confirmed) return;
+		}
+
+		commentText = '';
+		loadIssueData(issueId);
+	}
+
+	// Filter history to only show entries with comments
+	// Note: Comments added via PATCH may have entry_type "change" but still contain comment text
+	let comments = $derived(history.filter((h) => h.comment && !h.is_deleted));
 </script>
 
 <Sheet.Root bind:open>
@@ -291,7 +368,12 @@
 							<MessageSquare class="h-4 w-4" />
 							Comments ({comments.length})
 						</h3>
-						<CommentList {comments} />
+						<CommentList
+							{comments}
+							bind:commentText
+							submitting={commentSubmitting}
+							onSubmit={handleAddComment}
+						/>
 					</div>
 				</div>
 			</div>
