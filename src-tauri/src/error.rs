@@ -23,11 +23,19 @@ pub enum Error {
 
     #[error("IO error: {0}")]
     Io(String),
+
+    #[error(
+        "Version conflict: the issue was modified by another user. Please refresh and try again."
+    )]
+    VersionConflict,
 }
 
 impl From<taiga_client::errors::TaigaClientError> for Error {
     fn from(e: taiga_client::errors::TaigaClientError) -> Self {
-        Error::TaigaClient(e.to_string())
+        match e {
+            taiga_client::errors::TaigaClientError::VersionConflict(_) => Error::VersionConflict,
+            other => Error::TaigaClient(other.to_string()),
+        }
     }
 }
 

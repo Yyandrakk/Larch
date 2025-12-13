@@ -254,3 +254,17 @@ pub struct SeverityDto {
     pub order: i64,
     pub project: i64,
 }
+
+// ============================================================================
+// Issue Patch Request DTOs (PATCH /api/v1/issues/{id})
+// ============================================================================
+
+/// Request body for patching an issue (e.g., status change)
+#[derive(Debug, Clone, Serialize)]
+pub struct PatchIssueRequest {
+    /// The version field for optimistic locking (required by Taiga)
+    pub version: i64,
+    /// The new status ID (optional - only include if changing status)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<i64>,
+}
