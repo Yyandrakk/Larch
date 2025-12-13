@@ -8,6 +8,7 @@
 	function getInitials(name: string): string {
 		return name
 			.split(' ')
+			.filter((n) => n.length > 0)
 			.map((n) => n[0])
 			.join('')
 			.toUpperCase()
@@ -16,8 +17,27 @@
 
 	function formatRelativeDate(dateStr: string): string {
 		const date = new Date(dateStr);
+		if (isNaN(date.getTime())) {
+			return 'Invalid date';
+		}
+
 		const now = new Date();
 		const diffMs = now.getTime() - date.getTime();
+
+		// Handle future dates
+		if (diffMs < 0) {
+			const absDiff = Math.abs(diffMs);
+			const diffSecs = Math.floor(absDiff / 1000);
+			const diffMins = Math.floor(diffSecs / 60);
+			const diffHours = Math.floor(diffMins / 60);
+			const diffDays = Math.floor(diffHours / 24);
+
+			if (diffDays > 0) return `in ${diffDays}d`;
+			if (diffHours > 0) return `in ${diffHours}h`;
+			if (diffMins > 0) return `in ${diffMins}m`;
+			return 'in the future';
+		}
+
 		const diffSecs = Math.floor(diffMs / 1000);
 		const diffMins = Math.floor(diffSecs / 60);
 		const diffHours = Math.floor(diffMins / 60);

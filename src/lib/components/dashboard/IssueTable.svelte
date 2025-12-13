@@ -45,8 +45,16 @@
 			{:else}
 				{#each issues as issue (issue.id)}
 					<Table.Row
-						class="hover:bg-muted/50 cursor-pointer transition-colors"
+						class="hover:bg-muted/50 focus:ring-ring cursor-pointer transition-colors focus:ring-2 focus:outline-none"
+						role="button"
+						tabindex="0"
 						onclick={() => handleRowClick(issue.id)}
+						onkeydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								handleRowClick(issue.id);
+							}
+						}}
 					>
 						<Table.Cell class="font-medium">{issue.subject}</Table.Cell>
 						<Table.Cell>

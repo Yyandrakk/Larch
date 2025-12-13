@@ -9,7 +9,7 @@
 	{#each tags as tag (tag.name)}
 		<Badge
 			variant="secondary"
-			style={tag.color
+			style={tag.color && /^#[0-9A-Fa-f]{6}$/.test(tag.color)
 				? `background-color: ${tag.color}20; border-color: ${tag.color}; color: ${tag.color}`
 				: ''}
 			class="text-xs"

@@ -6,7 +6,7 @@
 	let { attachments }: { attachments: Attachment[] } = $props();
 
 	function openAttachment(url: string) {
-		window.open(url, '_blank');
+		window.open(url, '_blank', 'noopener,noreferrer');
 	}
 </script>
 
@@ -42,8 +42,9 @@
 			<Button
 				variant="ghost"
 				size="icon"
-				class="opacity-0 transition-opacity group-hover:opacity-100"
+				class="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
 				onclick={() => openAttachment(attachment.url)}
+				aria-label="Open attachment in new tab"
 			>
 				<ExternalLink class="h-4 w-4" />
 			</Button>

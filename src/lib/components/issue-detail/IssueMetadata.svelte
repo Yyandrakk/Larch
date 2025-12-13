@@ -8,6 +8,9 @@
 
 	function formatDate(dateStr: string): string {
 		const date = new Date(dateStr);
+		if (isNaN(date.getTime())) {
+			return 'Invalid date';
+		}
 		return date.toLocaleDateString(undefined, {
 			year: 'numeric',
 			month: 'short',
@@ -18,6 +21,7 @@
 	function getInitials(name: string): string {
 		return name
 			.split(' ')
+			.filter((n) => n.length > 0)
 			.map((n) => n[0])
 			.join('')
 			.toUpperCase()
