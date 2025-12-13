@@ -45,3 +45,29 @@ pub async fn get_issue_history(
 
     Ok(entries)
 }
+
+/// Change the status of an issue
+/// Uses optimistic locking via the version field
+#[tauri::command]
+pub async fn change_issue_status(
+    client: tauri::State<'_, TaigaClient>,
+    issue_id: i64,
+    status_id: i64,
+    version: i64,
+) -> Result<IssueDetail> {
+    let token = credentials::get_api_token()?;
+
+    // Build the patch request
+    let request = taiga_client::models::PatchIssueRequest {
+        version,
+        status: Some(status_id),
+    };
+
+    // Call the API - will return VersionConflict on 412
+    let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+
+    // Convert to domain model
+    let issue_detail = IssueDetail::from_dto(updated_issue_dto);
+
+    Ok(issue_detail)
+}

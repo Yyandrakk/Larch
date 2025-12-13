@@ -1,14 +1,19 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/core';
-	import { CMD_GET_ISSUE_DETAIL, CMD_GET_ISSUE_HISTORY } from '$lib/commands.svelte';
-	import type { IssueDetail, HistoryEntry } from '$lib/types';
+	import {
+		CMD_GET_ISSUE_DETAIL,
+		CMD_GET_ISSUE_HISTORY,
+		CMD_CHANGE_ISSUE_STATUS,
+		CMD_GET_PROJECT_METADATA
+	} from '$lib/commands.svelte';
+	import type { IssueDetail, HistoryEntry, IssueStatus, ProjectMetadata } from '$lib/types';
 	import * as Sheet from '$lib/components/ui/sheet';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { t } from 'svelte-i18n';
 	import { toast } from 'svelte-sonner';
-	import { Paperclip, MessageSquare } from '@lucide/svelte';
+	import { Paperclip, MessageSquare, RefreshCw } from '@lucide/svelte';
 	import IssueMetadata from './IssueMetadata.svelte';
 	import TagList from './TagList.svelte';
 	import AttachmentList from './AttachmentList.svelte';
@@ -16,16 +21,21 @@
 
 	let {
 		issueId = $bindable<number | null>(null),
-		open = $bindable(false)
+		open = $bindable(false),
+		onIssueUpdated
 	}: {
 		issueId: number | null;
 		open: boolean;
+		onIssueUpdated?: () => void;
 	} = $props();
 
 	let issue = $state<IssueDetail | null>(null);
 	let history = $state<HistoryEntry[]>([]);
+	let statuses = $state<IssueStatus[]>([]);
 	let loading = $state(false);
+	let statusUpdating = $state(false);
 	let error = $state<string | null>(null);
+	let hasConflict = $state(false);
 
 	// Watch for issueId changes to load data
 	$effect(() => {
@@ -39,6 +49,8 @@
 		error = null;
 		issue = null;
 		history = [];
+		statuses = [];
+		hasConflict = false;
 
 		try {
 			// Fetch issue detail and history in parallel
@@ -49,6 +61,21 @@
 
 			issue = issueResult;
 			history = historyResult;
+
+			// Now fetch project metadata for this issue's project
+			if (issue.project_id) {
+				try {
+					const metadata = await invoke<Record<number, ProjectMetadata>>(CMD_GET_PROJECT_METADATA, {
+						projectIds: [issue.project_id]
+					});
+					if (metadata[issue.project_id]) {
+						statuses = metadata[issue.project_id].statuses;
+					}
+				} catch (metaErr) {
+					console.warn('Failed to load project metadata:', metaErr);
+					// Don't block the UI, just won't have status dropdown
+				}
+			}
 		} catch (e) {
 			console.error('Failed to load issue:', e);
 			// Better error serialization
@@ -68,6 +95,70 @@
 			toast.error($t('issueDetail.error'));
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function handleStatusChange(newStatusId: number) {
+		if (!issue) return;
+
+		// Don't do anything if selecting the current status
+		if (newStatusId === issue.status_id) return;
+
+		statusUpdating = true;
+		hasConflict = false;
+
+		try {
+			const updatedIssue = await invoke<IssueDetail>(CMD_CHANGE_ISSUE_STATUS, {
+				issueId: issue.id,
+				statusId: newStatusId,
+				version: issue.version
+			});
+
+			// Update local issue state with the response
+			issue = updatedIssue;
+
+			// Find the status name for the toast
+			const newStatus = statuses.find((s) => s.id === newStatusId);
+			toast.success(
+				$t('issueDetail.statusUpdated') || `Status updated to ${newStatus?.name || 'new status'}`
+			);
+
+			// Notify parent to refresh the issues table
+			if (onIssueUpdated) {
+				onIssueUpdated();
+			}
+		} catch (e) {
+			console.error('Failed to update status:', e);
+
+			// Check if it's a version conflict error
+			// The error comes as an object like { VersionConflict: null } or a string containing "VersionConflict"
+			const errorStr = typeof e === 'string' ? e : JSON.stringify(e);
+			const isConflict =
+				errorStr.includes('VersionConflict') || errorStr.includes('version conflict');
+
+			if (isConflict) {
+				hasConflict = true;
+				toast.error(
+					$t('issueDetail.versionConflict') ||
+						'This issue was modified by someone else. Please reload and try again.',
+					{
+						action: {
+							label: $t('issueDetail.reload') || 'Reload',
+							onClick: () => issueId && loadIssueData(issueId)
+						}
+					}
+				);
+			} else {
+				toast.error($t('issueDetail.statusUpdateError') || 'Failed to update status');
+			}
+		} finally {
+			statusUpdating = false;
+		}
+	}
+
+	function handleReload() {
+		if (issueId) {
+			loadIssueData(issueId);
 		}
 	}
 
@@ -109,22 +200,48 @@
 		{:else if issue}
 			<!-- Issue Detail -->
 			<Sheet.Header class="flex-shrink-0 border-b pb-4">
-				<div class="flex items-center gap-2">
-					<span class="text-muted-foreground font-mono">#{issue.ref_number}</span>
-					<Badge variant={issue.is_closed ? 'secondary' : 'default'} class="text-xs">
-						{issue.is_closed ? '✓ Closed' : '● Open'}
-					</Badge>
+				<div class="flex items-center justify-between pr-8">
+					<div class="flex items-center gap-2">
+						<span class="text-muted-foreground font-mono">#{issue.ref_number}</span>
+						<Badge variant={issue.is_closed ? 'secondary' : 'default'} class="text-xs">
+							{issue.is_closed ? '✓ Closed' : '● Open'}
+						</Badge>
+					</div>
+					<Button
+						variant="ghost"
+						size="icon"
+						onclick={handleReload}
+						disabled={loading || statusUpdating}
+						title={$t('issueDetail.reload') || 'Reload'}
+					>
+						<RefreshCw class="h-4 w-4" />
+					</Button>
 				</div>
 				<Sheet.Title class="mt-2 text-xl leading-tight font-semibold">
 					{issue.subject}
 				</Sheet.Title>
 			</Sheet.Header>
 
+			<!-- Conflict Warning -->
+			{#if hasConflict}
+				<div
+					class="bg-destructive/10 text-destructive flex items-center justify-between gap-2 px-6 py-3 text-sm"
+				>
+					<span
+						>{$t('issueDetail.versionConflict') || 'This issue was modified by someone else.'}</span
+					>
+					<Button variant="outline" size="sm" onclick={handleReload}>
+						<RefreshCw class="mr-2 h-3 w-3" />
+						{$t('issueDetail.reload') || 'Reload'}
+					</Button>
+				</div>
+			{/if}
+
 			<!-- Scrollable content area -->
 			<div class="flex-1 overflow-y-auto">
 				<div class="space-y-6 p-6">
 					<!-- Metadata Section -->
-					<IssueMetadata {issue} />
+					<IssueMetadata {issue} {statuses} {statusUpdating} onStatusChange={handleStatusChange} />
 
 					<!-- Tags -->
 					{#if issue.tags.length > 0}
