@@ -265,8 +265,34 @@ impl TaigaClient {
         }
     }
 
-    /// Fetch issue history (comments and changes)
-    /// GET /api/v1/history/issue/{issue_id}
+    /// Retrieves the history entries (comments and change events) for a specific issue.
+    ///
+    /// The request is authenticated with the provided bearer token.
+    ///
+    /// # Parameters
+    ///
+    /// - `token`: Bearer token used for authentication.
+    /// - `issue_id`: Identifier of the issue whose history will be fetched.
+    ///
+    /// # Returns
+    ///
+    /// A vector of `IssueHistoryEntryDto` representing the issue's history entries.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use secrecy::Secret;
+    /// use url::Url;
+    /// // Construct client and token (placeholders)
+    /// let client = taiga_client::TaigaClient::new(Url::parse("https://taiga.example/").unwrap());
+    /// let token = Secret::new("MY_TOKEN".to_string());
+    /// // In an async context:
+    /// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    /// let history = client.get_issue_history(&token, 123).await?;
+    /// assert!(history.is_empty() || history.len() > 0);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn get_issue_history(
         &self,
         token: &Secret<String>,
@@ -306,9 +332,36 @@ impl TaigaClient {
         }
     }
 
-    /// Patch an issue (e.g., change status)
-    /// PATCH /api/v1/issues/{issue_id}
-    /// Uses version field for optimistic locking - returns VersionConflict on 412
+    /// Patch an existing issue using optimistic locking via the request's `version` field.
+    ///
+    /// Sends a PATCH to `/api/v1/issues/{issue_id}` and returns the updated issue on success.
+    /// If the server reports a version mismatch (detected by HTTP 412 Precondition Failed or a
+    /// response body mentioning a `version` mismatch), this returns `TaigaClientError::VersionConflict`.
+    /// Other HTTP failure statuses are mapped to appropriate `TaigaClientError` variants.
+    ///
+    /// # Parameters
+    ///
+    /// * `request` - The patch request; its `version` field is used for optimistic locking.
+    ///
+    /// # Returns
+    ///
+    /// The updated `IssueDetailDto`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use secrecy::Secret;
+    /// # use url::Url;
+    /// # use taiga_client::{TaigaClient, models};
+    /// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    /// let api_base = Url::parse("https://taiga.example.com/")?;
+    /// let client = TaigaClient::new(api_base);
+    /// let token = Secret::new("MY_TOKEN".to_string());
+    /// let request = models::PatchIssueRequest { version: 1, /* other fields */ ..Default::default() };
+    /// let updated = client.patch_issue(&token, 123, request).await?;
+    /// println!("Updated issue id: {}", updated.id);
+    /// # Ok(()) }
+    /// ```
     pub async fn patch_issue(
         &self,
         token: &Secret<String>,

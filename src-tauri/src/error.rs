@@ -31,6 +31,20 @@ pub enum Error {
 }
 
 impl From<taiga_client::errors::TaigaClientError> for Error {
+    /// Convert a `taiga_client::errors::TaigaClientError` into the crate's centralized `Error`.
+    ///
+    /// Maps `TaigaClientError::VersionConflict(_)` to `Error::VersionConflict`. All other
+    /// `TaigaClientError` variants are converted to `Error::TaigaClient` containing the
+    /// source error's string representation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// // Construct a Taiga client error and convert it into the crate `Error`.
+    /// let tc_err = taiga_client::errors::TaigaClientError::VersionConflict(String::from("conflict"));
+    /// let err: Error = tc_err.into();
+    /// assert!(matches!(err, Error::VersionConflict));
+    /// ```
     fn from(e: taiga_client::errors::TaigaClientError) -> Self {
         match e {
             taiga_client::errors::TaigaClientError::VersionConflict(_) => Error::VersionConflict,

@@ -25,7 +25,27 @@ pub async fn get_issue_detail(
     Ok(issue_detail)
 }
 
-/// Get issue history (comments and changes)
+/// Fetches an issue's visible history entries (comments and changes).
+///
+/// Hidden history entries (where `is_hidden` is `true`) are excluded from the result.
+///
+/// # Parameters
+///
+/// - `issue_id`: ID of the issue to fetch history for.
+///
+/// # Returns
+///
+/// A `Vec<HistoryEntry>` containing the issue's visible history entries.
+///
+/// # Examples
+///
+/// ```
+/// # async fn example(client: tauri::State<'_, TaigaClient>) -> anyhow::Result<()> {
+/// let entries = get_issue_history(client, 42).await?;
+/// assert!(entries.iter().all(|e| !e.is_hidden.unwrap_or(false)));
+/// # Ok(())
+/// # }
+/// ```
 #[tauri::command]
 pub async fn get_issue_history(
     client: tauri::State<'_, TaigaClient>,
@@ -46,8 +66,23 @@ pub async fn get_issue_history(
     Ok(entries)
 }
 
-/// Change the status of an issue
-/// Uses optimistic locking via the version field
+/// Updates an issue's status using optimistic locking via the provided `version`.
+///
+/// If the provided `version` does not match the server's current version, the Taiga API may respond with a
+/// `VersionConflict` (HTTP 412) error.
+///
+/// # Examples
+///
+/// ```no_run
+/// # async fn example(client: tauri::State<'_, TaigaClient>) -> anyhow::Result<()> {
+/// let issue_id = 123;
+/// let new_status_id = 5;
+/// let current_version = 42;
+/// let updated = change_issue_status(client, issue_id, new_status_id, current_version).await?;
+/// // `updated` is the refreshed IssueDetail after the status change.
+/// # Ok(())
+/// # }
+/// ```
 #[tauri::command]
 pub async fn change_issue_status(
     client: tauri::State<'_, TaigaClient>,

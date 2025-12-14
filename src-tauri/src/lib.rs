@@ -8,6 +8,15 @@ pub mod services;
 use crate::repositories::Repository;
 use tauri::Manager;
 
+/// Initializes and starts the Tauri application.
+///
+/// Sets up debug-only plugins (logging and MCP bridge), initializes the database, attempts to restore a saved Taiga API session, registers managed state (repository and optional Taiga client), attaches plugins and command invoke handlers, and then runs the application runtime.
+///
+/// # Examples
+///
+/// ```no_run
+/// run();
+/// ```
 #[allow(clippy::missing_panics_doc)]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
