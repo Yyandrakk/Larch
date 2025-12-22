@@ -77,6 +77,20 @@
     "statusUpdated": "Status updated successfully",
     "statusUpdateError": "Failed to update status",
     "versionConflict": "This issue was modified by someone else. Please reload and try again.",
-    "reload": "Reload"
+    "reload": "Reload",
+    "addComment": "Add comment",
+    "commentPlaceholder": "Write a comment... (Markdown supported)",
+    "commentAdded": "Comment added successfully",
+    "commentError": "Failed to add comment",
+    "unsavedComment": "You have an unsaved comment. Reload anyway?",
+    "preview": "Preview",
+    "edit": "Edit",
+    "shiftEnterToSubmit": "Shift+Enter to submit",
+    "noContent": "Nothing to preview",
+    "toolbarBold": "Bold",
+    "toolbarItalic": "Italic",
+    "toolbarCode": "Code",
+    "toolbarLink": "Link",
+    "toolbarList": "List"
   }
 }

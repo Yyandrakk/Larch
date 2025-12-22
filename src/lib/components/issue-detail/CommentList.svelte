@@ -2,8 +2,20 @@
 	import type { HistoryEntry } from '$lib/types';
 	import * as Avatar from '$lib/components/ui/avatar';
 	import { t } from 'svelte-i18n';
+	import MarkdownEditor from '$lib/components/common/MarkdownEditor.svelte';
+	import { Separator } from '$lib/components/ui/separator';
 
-	let { comments }: { comments: HistoryEntry[] } = $props();
+	let {
+		comments,
+		commentText = $bindable(''),
+		submitting = false,
+		onSubmit
+	}: {
+		comments: HistoryEntry[];
+		commentText?: string;
+		submitting?: boolean;
+		onSubmit?: (text: string) => void;
+	} = $props();
 
 	function getInitials(name: string): string {
 		return name
@@ -55,8 +67,30 @@
 			return 'just now';
 		}
 	}
+
+	function handleSubmit(text: string) {
+		if (onSubmit) {
+			onSubmit(text);
+		}
+	}
 </script>
 
+<!-- Comment Input at top -->
+{#if onSubmit}
+	<div class="mb-4">
+		<MarkdownEditor
+			bind:value={commentText}
+			placeholder={$t('issueDetail.commentPlaceholder') ||
+				'Write a comment... (Markdown supported)'}
+			disabled={false}
+			{submitting}
+			onSubmit={handleSubmit}
+		/>
+	</div>
+	<Separator class="my-4" />
+{/if}
+
+<!-- Existing Comments -->
 {#if comments.length === 0}
 	<div class="text-muted-foreground py-8 text-center">
 		<p class="text-sm italic">{$t('issueDetail.noComments') || 'No comments yet'}</p>

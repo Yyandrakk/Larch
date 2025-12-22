@@ -61,6 +61,34 @@ pub async fn change_issue_status(
     let request = taiga_client::models::PatchIssueRequest {
         version,
         status: Some(status_id),
+        comment: None,
+    };
+
+    // Call the API - will return VersionConflict on 412
+    let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+
+    // Convert to domain model
+    let issue_detail = IssueDetail::from_dto(updated_issue_dto);
+
+    Ok(issue_detail)
+}
+
+/// Add a comment to an issue
+/// Uses optimistic locking via the version field
+#[tauri::command]
+pub async fn add_issue_comment(
+    client: tauri::State<'_, TaigaClient>,
+    issue_id: i64,
+    comment: String,
+    version: i64,
+) -> Result<IssueDetail> {
+    let token = credentials::get_api_token()?;
+
+    // Build the patch request with only the comment
+    let request = taiga_client::models::PatchIssueRequest {
+        version,
+        status: None,
+        comment: Some(comment),
     };
 
     // Call the API - will return VersionConflict on 412
