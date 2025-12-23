@@ -273,4 +273,10 @@ pub struct PatchIssueRequest {
     /// The new description (optional - only include if editing description)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// The new assignee user ID (optional).
+    /// - `None`: Field omitted (assignee remains unchanged).
+    /// - `Some(None)`: Serialized as `null` (unassigns the issue).
+    /// - `Some(Some(id))`: Serialized as `id` (assigns to user).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub assigned_to: Option<Option<i64>>,
 }
