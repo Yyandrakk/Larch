@@ -17,3 +17,9 @@ export const CMD_GET_ISSUE_DETAIL = 'get_issue_detail';
 export const CMD_GET_ISSUE_HISTORY = 'get_issue_history';
 export const CMD_CHANGE_ISSUE_STATUS = 'change_issue_status';
 export const CMD_ADD_ISSUE_COMMENT = 'add_issue_comment';
+export const CMD_COMMIT_ISSUE_DESCRIPTION = 'commit_issue_description';
+
+// Draft Commands
+export const CMD_SAVE_LOCAL_DRAFT = 'save_local_draft';
+export const CMD_GET_LOCAL_DRAFT = 'get_local_draft';
+export const CMD_DELETE_LOCAL_DRAFT = 'delete_local_draft';

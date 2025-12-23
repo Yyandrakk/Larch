@@ -91,6 +91,14 @@
     "toolbarItalic": "Italic",
     "toolbarCode": "Code",
     "toolbarLink": "Link",
-    "toolbarList": "List"
+    "toolbarList": "List",
+    "editDescription": "Edit",
+    "cancelEdit": "Cancel",
+    "saveDescription": "Save",
+    "savingDescription": "Saving...",
+    "descriptionUpdated": "Description updated successfully",
+    "descriptionUpdateError": "Failed to update description",
+    "draftSaved": "Draft saved",
+    "discardDraft": "Discard draft"
   }
 }
