@@ -62,7 +62,11 @@ pub fn run() {
             commands::issue_commands::get_issue_detail,
             commands::issue_commands::get_issue_history,
             commands::issue_commands::change_issue_status,
-            commands::issue_commands::add_issue_comment
+            commands::issue_commands::add_issue_comment,
+            commands::draft_commands::save_local_draft,
+            commands::draft_commands::get_local_draft,
+            commands::draft_commands::delete_local_draft,
+            commands::issue_commands::commit_issue_description
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

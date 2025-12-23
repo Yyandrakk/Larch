@@ -5,7 +5,11 @@
 		CMD_GET_ISSUE_HISTORY,
 		CMD_CHANGE_ISSUE_STATUS,
 		CMD_GET_PROJECT_METADATA,
-		CMD_ADD_ISSUE_COMMENT
+		CMD_ADD_ISSUE_COMMENT,
+		CMD_SAVE_LOCAL_DRAFT,
+		CMD_GET_LOCAL_DRAFT,
+		CMD_DELETE_LOCAL_DRAFT,
+		CMD_COMMIT_ISSUE_DESCRIPTION
 	} from '$lib/commands.svelte';
 	import type { IssueDetail, HistoryEntry, IssueStatus, ProjectMetadata } from '$lib/types';
 	import * as Sheet from '$lib/components/ui/sheet';
@@ -14,7 +18,7 @@
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { t } from 'svelte-i18n';
 	import { toast } from 'svelte-sonner';
-	import { Paperclip, MessageSquare, RefreshCw } from '@lucide/svelte';
+	import { Paperclip, MessageSquare, RefreshCw, Edit3, X, Save, Loader2 } from '@lucide/svelte';
 	import IssueMetadata from './IssueMetadata.svelte';
 	import TagList from './TagList.svelte';
 	import AttachmentList from './AttachmentList.svelte';
@@ -40,6 +44,14 @@
 	let error = $state<string | null>(null);
 	let hasConflict = $state(false);
 
+	// Description editing state
+	let isEditingDescription = $state(false);
+	let descriptionDraft = $state('');
+	let descriptionSaving = $state(false);
+	let hasDraft = $state(false);
+	let draftSaveTimeout: ReturnType<typeof setTimeout> | null = null;
+	const DRAFT_DEBOUNCE_MS = 2000;
+
 	// Watch for issueId changes to load data
 	$effect(() => {
 		if (issueId && open) {
@@ -47,10 +59,15 @@
 		}
 	});
 
-	// Clear comment text when issue changes
+	// Clear comment text and reset description edit state when issue changes
 	$effect(() => {
 		if (issueId) {
 			commentText = '';
+			isEditingDescription = false;
+			descriptionDraft = '';
+			hasDraft = false;
+			// Check for existing draft
+			checkForDraft(issueId);
 		}
 	});
 
@@ -248,6 +265,138 @@
 	// Filter history to only show entries with comments
 	// Note: Comments added via PATCH may have entry_type "change" but still contain comment text
 	let comments = $derived(history.filter((h) => h.comment && !h.is_deleted));
+
+	// ============================================================================
+	// Description Editing Functions
+	// ============================================================================
+
+	async function checkForDraft(id: number) {
+		try {
+			const draft = await invoke<string | null>(CMD_GET_LOCAL_DRAFT, {
+				relatedId: `issue_${id}`,
+				draftType: 'description'
+			});
+			if (draft) {
+				hasDraft = true;
+				descriptionDraft = draft;
+			}
+		} catch (e) {
+			console.warn('Failed to check for draft:', e);
+		}
+	}
+
+	function startEditingDescription() {
+		if (!issue) return;
+		isEditingDescription = true;
+		// Use existing draft if available, otherwise use current description
+		if (!hasDraft) {
+			descriptionDraft = issue.description || '';
+		}
+	}
+
+	async function cancelEditingDescription() {
+		isEditingDescription = false;
+		// Clear the debounce timeout
+		if (draftSaveTimeout) {
+			clearTimeout(draftSaveTimeout);
+			draftSaveTimeout = null;
+		}
+	}
+
+	async function discardDraft() {
+		if (!issueId) return;
+		try {
+			await invoke(CMD_DELETE_LOCAL_DRAFT, {
+				relatedId: `issue_${issueId}`,
+				draftType: 'description'
+			});
+			hasDraft = false;
+			descriptionDraft = issue?.description || '';
+			isEditingDescription = false;
+		} catch (e) {
+			console.error('Failed to discard draft:', e);
+		}
+	}
+
+	function handleDescriptionInput(e: Event) {
+		const target = e.target as HTMLTextAreaElement;
+		descriptionDraft = target.value;
+		debounceSaveDraft();
+	}
+
+	function debounceSaveDraft() {
+		if (draftSaveTimeout) {
+			clearTimeout(draftSaveTimeout);
+		}
+		draftSaveTimeout = setTimeout(() => saveDraft(), DRAFT_DEBOUNCE_MS);
+	}
+
+	async function saveDraft() {
+		if (!issueId) return;
+		try {
+			await invoke(CMD_SAVE_LOCAL_DRAFT, {
+				relatedId: `issue_${issueId}`,
+				draftType: 'description',
+				content: descriptionDraft
+			});
+			hasDraft = true;
+			console.log('Draft saved');
+		} catch (e) {
+			console.error('Failed to save draft:', e);
+		}
+	}
+
+	async function commitDescription() {
+		if (!issue) return;
+
+		// First, save the current draft immediately
+		if (draftSaveTimeout) {
+			clearTimeout(draftSaveTimeout);
+			draftSaveTimeout = null;
+		}
+		await saveDraft();
+
+		descriptionSaving = true;
+		hasConflict = false;
+
+		try {
+			const updatedIssue = await invoke<IssueDetail>(CMD_COMMIT_ISSUE_DESCRIPTION, {
+				issueId: issue.id,
+				version: issue.version
+			});
+
+			issue = updatedIssue;
+			isEditingDescription = false;
+			hasDraft = false;
+			descriptionDraft = '';
+
+			toast.success($t('issueDetail.descriptionUpdated') || 'Description updated successfully');
+
+			if (onIssueUpdated) {
+				onIssueUpdated();
+			}
+		} catch (e) {
+			console.error('Failed to commit description:', e);
+
+			if (isVersionConflict(e)) {
+				hasConflict = true;
+				toast.error(
+					$t('issueDetail.versionConflict') ||
+						'This issue was modified by someone else. Please reload and try again.',
+					{
+						action: {
+							label: $t('issueDetail.reload') || 'Reload',
+							onClick: () => handleReloadWithConfirmation()
+						}
+					}
+				);
+			} else {
+				toast.error($t('issueDetail.descriptionUpdateError') || 'Failed to update description');
+			}
+		} finally {
+			descriptionSaving = false;
+		}
+	}
 </script>
 
 <Sheet.Root bind:open>
@@ -346,16 +495,88 @@
 
 					<!-- Description -->
 					<div>
-						<h3 class="mb-2 text-sm font-medium">Description</h3>
-						{#if issue.description_html}
+						<div class="mb-2 flex items-center justify-between">
+							<h3 class="text-sm font-medium">{$t('issueDetail.description') || 'Description'}</h3>
+							{#if !isEditingDescription}
+								<div class="flex items-center gap-2">
+									{#if hasDraft}
+										<Badge variant="secondary" class="text-xs">
+											{$t('issueDetail.draftSaved') || 'Draft saved'}
+										</Badge>
+									{/if}
+									<Button
+										variant="ghost"
+										size="sm"
+										class="h-7 gap-1 text-xs"
+										onclick={startEditingDescription}
+										disabled={loading || statusUpdating}
+									>
+										<Edit3 class="h-3 w-3" />
+										{$t('issueDetail.editDescription') || 'Edit'}
+									</Button>
+								</div>
+							{/if}
+						</div>
+
+						{#if isEditingDescription}
+							<!-- Edit Mode -->
+							<div class="space-y-3">
+								<textarea
+									value={descriptionDraft}
+									oninput={handleDescriptionInput}
+									disabled={descriptionSaving}
+									class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[150px] w-full resize-y rounded-lg border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+									rows={6}
+									placeholder={$t('issueDetail.noDescription') || 'No description provided'}
+								></textarea>
+								<div class="flex items-center justify-between">
+									<div class="flex gap-2">
+										{#if hasDraft}
+											<Button
+												variant="ghost"
+												size="sm"
+												onclick={discardDraft}
+												disabled={descriptionSaving}
+												class="text-destructive hover:text-destructive"
+											>
+												{$t('issueDetail.discardDraft') || 'Discard draft'}
+											</Button>
+										{/if}
+									</div>
+									<div class="flex gap-2">
+										<Button
+											variant="outline"
+											size="sm"
+											onclick={cancelEditingDescription}
+											disabled={descriptionSaving}
+										>
+											<X class="mr-1 h-3 w-3" />
+											{$t('issueDetail.cancelEdit') || 'Cancel'}
+										</Button>
+										<Button size="sm" onclick={commitDescription} disabled={descriptionSaving}>
+											{#if descriptionSaving}
+												<Loader2 class="mr-1 h-3 w-3 animate-spin" />
+												{$t('issueDetail.savingDescription') || 'Saving...'}
+											{:else}
+												<Save class="mr-1 h-3 w-3" />
+												{$t('issueDetail.saveDescription') || 'Save'}
+											{/if}
+										</Button>
+									</div>
+								</div>
+							</div>
+						{:else if issue.description_html}
+							<!-- View Mode: HTML -->
 							<div class="prose prose-sm dark:prose-invert bg-muted/30 max-w-none rounded-lg p-4">
 								{@html issue.description_html}
 							</div>
 						{:else if issue.description}
+							<!-- View Mode: Plain text -->
 							<div class="bg-muted/30 rounded-lg p-4 text-sm whitespace-pre-wrap">
 								{issue.description}
 							</div>
 						{:else}
+							<!-- No description -->
 							<p class="text-muted-foreground text-sm italic">
 								{$t('issueDetail.noDescription') || 'No description provided'}
 							</p>

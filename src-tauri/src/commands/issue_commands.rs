@@ -1,5 +1,6 @@
 use crate::domain::issue_detail::{HistoryEntry, IssueDetail};
 use crate::error::Result;
+use crate::repositories::{Repository, SqliteRepository};
 use crate::services::credentials;
 use taiga_client::TaigaClient;
 
@@ -62,6 +63,7 @@ pub async fn change_issue_status(
         version,
         status: Some(status_id),
         comment: None,
+        description: None,
     };
 
     // Call the API - will return VersionConflict on 412
@@ -89,10 +91,60 @@ pub async fn add_issue_comment(
         version,
         status: None,
         comment: Some(comment),
+        description: None,
     };
 
     // Call the API - will return VersionConflict on 412
     let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+
+    // Convert to domain model
+    let issue_detail = IssueDetail::from_dto(updated_issue_dto);
+
+    Ok(issue_detail)
+}
+
+/// Commit a description change from local draft to Taiga API
+/// Reads the description draft from SQLite and commits to API
+/// On success, deletes the local draft
+#[tauri::command]
+pub async fn commit_issue_description(
+    client: tauri::State<'_, TaigaClient>,
+    repository: tauri::State<'_, SqliteRepository>,
+    issue_id: i64,
+    version: i64,
+) -> Result<IssueDetail> {
+    let token = credentials::get_api_token()?;
+
+    // Read the draft from the local database
+    let related_id = format!("issue_{}", issue_id);
+    let draft_type = "description";
+
+    let description = repository
+        .get_draft(&related_id, draft_type)
+        .await?
+        .ok_or_else(|| crate::error::Error::Database("No draft found to commit".to_string()))?;
+
+    log::info!(
+        "Committing description draft for issue {} (version {})",
+        issue_id,
+        version
+    );
+
+    // Build the patch request with the description
+    let request = taiga_client::models::PatchIssueRequest {
+        version,
+        status: None,
+        comment: None,
+        description: Some(description),
+    };
+
+    // Call the API - will return VersionConflict on 412
+    let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+
+    // On success, delete the local draft
+    repository.delete_draft(&related_id, draft_type).await?;
+
+    log::info!("Successfully committed description for issue {}", issue_id);
 
     // Convert to domain model
     let issue_detail = IssueDetail::from_dto(updated_issue_dto);

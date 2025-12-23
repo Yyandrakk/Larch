@@ -24,6 +24,9 @@ pub enum Error {
     #[error("IO error: {0}")]
     Io(String),
 
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+
     #[error(
         "Version conflict: the issue was modified by another user. Please refresh and try again."
     )]
