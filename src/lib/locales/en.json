@@ -98,6 +98,8 @@
     "savingDescription": "Saving...",
     "descriptionUpdated": "Description updated successfully",
     "descriptionUpdateError": "Failed to update description",
+    "assigneeUpdated": "Assignee updated successfully",
+    "assigneeUpdateError": "Failed to update assignee",
     "draftSaved": "Draft saved",
     "discardDraft": "Discard draft"
   }

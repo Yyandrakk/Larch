@@ -4,6 +4,7 @@
 		CMD_GET_ISSUE_DETAIL,
 		CMD_GET_ISSUE_HISTORY,
 		CMD_CHANGE_ISSUE_STATUS,
+		CMD_CHANGE_ISSUE_ASSIGNEE,
 		CMD_GET_PROJECT_METADATA,
 		CMD_ADD_ISSUE_COMMENT,
 		CMD_SAVE_LOCAL_DRAFT,
@@ -11,7 +12,7 @@
 		CMD_DELETE_LOCAL_DRAFT,
 		CMD_COMMIT_ISSUE_DESCRIPTION
 	} from '$lib/commands.svelte';
-	import type { IssueDetail, HistoryEntry, IssueStatus, ProjectMetadata } from '$lib/types';
+	import type { IssueDetail, HistoryEntry, IssueStatus, ProjectMetadata, Member } from '$lib/types';
 	import * as Sheet from '$lib/components/ui/sheet';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
@@ -37,8 +38,10 @@
 	let issue = $state<IssueDetail | null>(null);
 	let history = $state<HistoryEntry[]>([]);
 	let statuses = $state<IssueStatus[]>([]);
+	let members = $state<Member[]>([]);
 	let loading = $state(false);
 	let statusUpdating = $state(false);
+	let assigneeUpdating = $state(false);
 	let commentSubmitting = $state(false);
 	let commentText = $state('');
 	let error = $state<string | null>(null);
@@ -77,6 +80,7 @@
 		issue = null;
 		history = [];
 		statuses = [];
+		members = [];
 		hasConflict = false;
 
 		try {
@@ -97,6 +101,7 @@
 					});
 					if (metadata[issue.project_id]) {
 						statuses = metadata[issue.project_id].statuses;
+						members = metadata[issue.project_id].members;
 					}
 				} catch (metaErr) {
 					console.warn('Failed to load project metadata:', metaErr);
@@ -126,7 +131,9 @@
 	}
 
 	async function reloadHistory() {
-		if (!issueId) return;
+		if (!issueId) {
+			return;
+		}
 		try {
 			history = await invoke<HistoryEntry[]>(CMD_GET_ISSUE_HISTORY, { issueId });
 		} catch (e) {
@@ -140,10 +147,14 @@
 	}
 
 	async function handleStatusChange(newStatusId: number) {
-		if (!issue) return;
+		if (!issue) {
+			return;
+		}
 
 		// Don't do anything if selecting the current status
-		if (newStatusId === issue.status_id) return;
+		if (newStatusId === issue.status_id) {
+			return;
+		}
 
 		statusUpdating = true;
 		hasConflict = false;
@@ -191,8 +202,65 @@
 		}
 	}
 
+	async function handleAssigneeChange(newAssigneeId: number | null) {
+		if (!issue) {
+			return;
+		}
+
+		// Don't do anything if selecting the current assignee
+		if (newAssigneeId === issue.assigned_to_id) {
+			return;
+		}
+
+		assigneeUpdating = true;
+		hasConflict = false;
+
+		try {
+			const updatedIssue = await invoke<IssueDetail>(CMD_CHANGE_ISSUE_ASSIGNEE, {
+				issueId: issue.id,
+				assigneeId: newAssigneeId,
+				version: issue.version
+			});
+
+			// Update local issue state with the response
+			issue = updatedIssue;
+
+			// Find the member name for the toast
+			const newAssignee = members.find((m) => m.user_id === newAssigneeId);
+			const assigneeName = newAssignee?.full_name || 'Unassigned';
+			toast.success($t('issueDetail.assigneeUpdated') || `Assigned to ${assigneeName}`);
+
+			// Notify parent to refresh the issues table
+			if (onIssueUpdated) {
+				onIssueUpdated();
+			}
+		} catch (e) {
+			console.error('Failed to update assignee:', e);
+
+			if (isVersionConflict(e)) {
+				hasConflict = true;
+				toast.error(
+					$t('issueDetail.versionConflict') ||
+						'This issue was modified by someone else. Please reload and try again.',
+					{
+						action: {
+							label: $t('issueDetail.reload') || 'Reload',
+							onClick: () => issueId && loadIssueData(issueId)
+						}
+					}
+				);
+			} else {
+				toast.error($t('issueDetail.assigneeUpdateError') || 'Failed to update assignee');
+			}
+		} finally {
+			assigneeUpdating = false;
+		}
+	}
+
 	async function handleAddComment(text: string) {
-		if (!issue || !text.trim()) return;
+		if (!issue || !text.trim()) {
+			return;
+		}
 
 		commentSubmitting = true;
 		hasConflict = false;
@@ -248,14 +316,18 @@
 	}
 
 	function handleReloadWithConfirmation() {
-		if (!issueId) return;
+		if (!issueId) {
+			return;
+		}
 
 		// If user has unsaved comment, confirm before reloading
 		if (commentText && commentText.trim()) {
 			const confirmed = confirm(
 				$t('issueDetail.unsavedComment') || 'You have an unsaved comment. Reload anyway?'
 			);
-			if (!confirmed) return;
+			if (!confirmed) {
+				return;
+			}
 		}
 
 		commentText = '';
@@ -286,7 +358,9 @@
 	}
 
 	function startEditingDescription() {
-		if (!issue) return;
+		if (!issue) {
+			return;
+		}
 		isEditingDescription = true;
 		// Use existing draft if available, otherwise use current description
 		if (!hasDraft) {
@@ -304,7 +378,9 @@
 	}
 
 	async function discardDraft() {
-		if (!issueId) return;
+		if (!issueId) {
+			return;
+		}
 		try {
 			await invoke(CMD_DELETE_LOCAL_DRAFT, {
 				relatedId: `issue_${issueId}`,
@@ -332,7 +408,9 @@
 	}
 
 	async function saveDraft() {
-		if (!issueId) return;
+		if (!issueId) {
+			return;
+		}
 		try {
 			await invoke(CMD_SAVE_LOCAL_DRAFT, {
 				relatedId: `issue_${issueId}`,
@@ -347,7 +425,9 @@
 	}
 
 	async function commitDescription() {
-		if (!issue) return;
+		if (!issue) {
+			return;
+		}
 
 		// First, save the current draft immediately
 		if (draftSaveTimeout) {
@@ -472,7 +552,15 @@
 			<div class="flex-1 overflow-y-auto">
 				<div class="space-y-6 p-6">
 					<!-- Metadata Section -->
-					<IssueMetadata {issue} {statuses} {statusUpdating} onStatusChange={handleStatusChange} />
+					<IssueMetadata
+						{issue}
+						{statuses}
+						{members}
+						{statusUpdating}
+						{assigneeUpdating}
+						onStatusChange={handleStatusChange}
+						onAssigneeChange={handleAssigneeChange}
+					/>
 
 					<!-- Tags -->
 					{#if issue.tags.length > 0}
