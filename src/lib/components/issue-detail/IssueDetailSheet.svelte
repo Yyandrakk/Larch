@@ -24,6 +24,7 @@
 	import TagList from './TagList.svelte';
 	import AttachmentList from './AttachmentList.svelte';
 	import CommentList from './CommentList.svelte';
+	import { setPendingCommit } from '$lib/stores/pendingClose';
 
 	let {
 		issueId = $bindable<number | null>(null),
@@ -72,6 +73,24 @@
 			// Check for existing draft
 			checkForDraft(issueId);
 		}
+	});
+
+	// Register/unregister pending commit callback for graceful shutdown
+	$effect(() => {
+		if (hasDraft && issueId) {
+			// Register our commit function for app close handling
+			setPendingCommit(async () => {
+				return await tryCommitDescriptionForClose();
+			});
+		} else {
+			// No pending draft, clear the callback
+			setPendingCommit(null);
+		}
+
+		return () => {
+			// Clean up when effect re-runs or component unmounts
+			setPendingCommit(null);
+		};
 	});
 
 	async function loadIssueData(id: number) {
@@ -166,34 +185,19 @@
 				version: issue.version
 			});
 
-			// Update local issue state with the response
 			issue = updatedIssue;
-
-			// Find the status name for the toast
 			const newStatus = statuses.find((s) => s.id === newStatusId);
 			toast.success(
 				$t('issueDetail.statusUpdated') || `Status updated to ${newStatus?.name || 'new status'}`
 			);
 
-			// Notify parent to refresh the issues table
 			if (onIssueUpdated) {
 				onIssueUpdated();
 			}
 		} catch (e) {
 			console.error('Failed to update status:', e);
-
 			if (isVersionConflict(e)) {
-				hasConflict = true;
-				toast.error(
-					$t('issueDetail.versionConflict') ||
-						'This issue was modified by someone else. Please reload and try again.',
-					{
-						action: {
-							label: $t('issueDetail.reload') || 'Reload',
-							onClick: () => issueId && loadIssueData(issueId)
-						}
-					}
-				);
+				handleVersionConflict(e);
 			} else {
 				toast.error($t('issueDetail.statusUpdateError') || 'Failed to update status');
 			}
@@ -222,33 +226,18 @@
 				version: issue.version
 			});
 
-			// Update local issue state with the response
 			issue = updatedIssue;
-
-			// Find the member name for the toast
 			const newAssignee = members.find((m) => m.user_id === newAssigneeId);
 			const assigneeName = newAssignee?.full_name || 'Unassigned';
 			toast.success($t('issueDetail.assigneeUpdated') || `Assigned to ${assigneeName}`);
 
-			// Notify parent to refresh the issues table
 			if (onIssueUpdated) {
 				onIssueUpdated();
 			}
 		} catch (e) {
 			console.error('Failed to update assignee:', e);
-
 			if (isVersionConflict(e)) {
-				hasConflict = true;
-				toast.error(
-					$t('issueDetail.versionConflict') ||
-						'This issue was modified by someone else. Please reload and try again.',
-					{
-						action: {
-							label: $t('issueDetail.reload') || 'Reload',
-							onClick: () => issueId && loadIssueData(issueId)
-						}
-					}
-				);
+				handleVersionConflict(e);
 			} else {
 				toast.error($t('issueDetail.assigneeUpdateError') || 'Failed to update assignee');
 			}
@@ -272,37 +261,18 @@
 				version: issue.version
 			});
 
-			// Update local issue state with the response (includes new version)
 			issue = updatedIssue;
-
-			// Reload history to show the new comment
 			await reloadHistory();
-
-			// Clear comment text only on success
 			commentText = '';
-
 			toast.success($t('issueDetail.commentAdded') || 'Comment added successfully');
 
-			// Notify parent to refresh if needed
 			if (onIssueUpdated) {
 				onIssueUpdated();
 			}
 		} catch (e) {
 			console.error('Failed to add comment:', e);
-
-			// DON'T clear commentText on error - preserve user's text
 			if (isVersionConflict(e)) {
-				hasConflict = true;
-				toast.error(
-					$t('issueDetail.versionConflict') ||
-						'This issue was modified by someone else. Please reload and try again.',
-					{
-						action: {
-							label: $t('issueDetail.reload') || 'Reload',
-							onClick: () => handleReloadWithConfirmation()
-						}
-					}
-				);
+				handleVersionConflict(e);
 			} else {
 				toast.error($t('issueDetail.commentError') || 'Failed to add comment');
 			}
@@ -425,8 +395,24 @@
 	}
 
 	async function commitDescription() {
+		await executeCommitDescription();
+	}
+
+	// Version of commitDescription that returns success/failure for app close handling
+	async function tryCommitDescriptionForClose(): Promise<boolean> {
+		if (!issue || !hasDraft) {
+			return true; // Nothing to commit, safe to close
+		}
+		return await executeCommitDescription();
+	}
+
+	/**
+	 * Shared logic for committing the description draft to the server.
+	 * Returns true if successful, false otherwise.
+	 */
+	async function executeCommitDescription(): Promise<boolean> {
 		if (!issue) {
-			return;
+			return false;
 		}
 
 		// First, save the current draft immediately
@@ -455,27 +441,36 @@
 			if (onIssueUpdated) {
 				onIssueUpdated();
 			}
+
+			return true;
 		} catch (e) {
 			console.error('Failed to commit description:', e);
-
 			if (isVersionConflict(e)) {
-				hasConflict = true;
-				toast.error(
-					$t('issueDetail.versionConflict') ||
-						'This issue was modified by someone else. Please reload and try again.',
-					{
-						action: {
-							label: $t('issueDetail.reload') || 'Reload',
-							onClick: () => handleReloadWithConfirmation()
-						}
-					}
-				);
+				handleVersionConflict(e);
 			} else {
 				toast.error($t('issueDetail.descriptionUpdateError') || 'Failed to update description');
 			}
+			return false;
 		} finally {
 			descriptionSaving = false;
 		}
+	}
+
+	/**
+	 * Shared handler for version conflict errors across all update actions.
+	 */
+	function handleVersionConflict(e: unknown) {
+		hasConflict = true;
+		toast.error(
+			$t('issueDetail.versionConflict') ||
+				'This issue was modified by someone else. Please reload and try again.',
+			{
+				action: {
+					label: $t('issueDetail.reload') || 'Reload',
+					onClick: () => handleReloadWithConfirmation()
+				}
+			}
+		);
 	}
 </script>
 

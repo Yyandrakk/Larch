@@ -24,3 +24,6 @@ export const CMD_COMMIT_ISSUE_DESCRIPTION = 'commit_issue_description';
 export const CMD_SAVE_LOCAL_DRAFT = 'save_local_draft';
 export const CMD_GET_LOCAL_DRAFT = 'get_local_draft';
 export const CMD_DELETE_LOCAL_DRAFT = 'delete_local_draft';
+
+// App Commands
+export const CMD_FORCE_CLOSE_APP = 'force_close_app';

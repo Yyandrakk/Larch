@@ -6,7 +6,7 @@ pub mod repositories;
 pub mod services;
 
 use crate::repositories::Repository;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 #[allow(clippy::missing_panics_doc)]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -67,8 +67,19 @@ pub fn run() {
             commands::draft_commands::get_local_draft,
             commands::draft_commands::delete_local_draft,
             commands::issue_commands::commit_issue_description,
-            commands::issue_commands::change_issue_assignee
+            commands::issue_commands::change_issue_assignee,
+            commands::app_commands::force_close_app
         ])
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // Prevent the window from closing immediately
+                api.prevent_close();
+                // Emit event to frontend to check for unsaved changes
+                if let Err(e) = window.emit("app-close-requested", ()) {
+                    log::error!("Failed to emit app-close-requested: {}", e);
+                }
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
