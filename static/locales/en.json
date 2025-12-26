@@ -1,18 +1,18 @@
 {
-  "app": {
-    "title": "Larch"
-  },
-  "login": {
-    "description": "Login to your Taiga instance",
-    "apiUrlLabel": "Taiga API URL",
-    "apiUrlHint": "Enter the base URL of your Taiga instance (without /api/v1).",
-    "usernameLabel": "Username",
-    "passwordLabel": "Password",
-    "loginButton": "Login",
-    "loadingButton": "Logging in..."
-  },
-  "errors": {
-    "unknown": "An unknown error occurred.",
-    "prefix": "Error:"
-  }
+	"app": {
+		"title": "Larch"
+	},
+	"login": {
+		"description": "Login to your Taiga instance",
+		"apiUrlLabel": "Taiga API URL",
+		"apiUrlHint": "Enter the base URL of your Taiga instance (without /api/v1).",
+		"usernameLabel": "Username",
+		"passwordLabel": "Password",
+		"loginButton": "Login",
+		"loadingButton": "Logging in..."
+	},
+	"errors": {
+		"unknown": "An unknown error occurred.",
+		"prefix": "Error:"
+	}
 }
