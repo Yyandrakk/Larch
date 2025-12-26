@@ -55,6 +55,26 @@
 			// 3. Fetch metadata for selected projects
 			if (selectedIds.length > 0) {
 				metadata = await invoke(CMD_GET_PROJECT_METADATA, { projectIds: selectedIds });
+
+				// Intelligent Default: Include ONLY "Open" statuses if no status filter is active
+				// This implements the "Triage View" requirement more reliably than exclusion
+				if (!filters.status_ids) {
+					const openStatusSet = new Set<number>();
+					Object.values(metadata).forEach((meta) => {
+						meta.statuses.forEach((status) => {
+							if (!status.is_closed) {
+								openStatusSet.add(status.id);
+							}
+						});
+					});
+
+					// If we found open statuses, filter by them.
+					// If we didn't (rare), we leave it empty which shows all (fallback).
+					if (openStatusSet.size > 0) {
+						filters.status_ids = Array.from(openStatusSet);
+						filters.status_exclude = false;
+					}
+				}
 			}
 
 			// 4. Fetch issues
