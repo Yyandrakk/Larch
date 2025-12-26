@@ -1,4 +1,3 @@
-
 # ADR-0002: Dynamic and State-Managed TaigaClient Instantiation
 
 - **Status:** Accepted
@@ -27,6 +26,7 @@ However, the product design (`doc-desing.md`) requires that the user can specify
 We will proceed with **Option 3**. The `TaigaClient` will no longer be created at application startup.
 
 The `login` Tauri command will now be responsible for:
+
 1.  Accepting the `api_url` as an argument from the frontend.
 2.  Creating a `TaigaClient` instance with the provided URL.
 3.  Using the client to authenticate with the Taiga API.
@@ -38,11 +38,11 @@ Subsequent commands that need to communicate with the API will retrieve the clie
 
 ### Positive
 
--   The application now fully supports the user-configurable API URL requirement.
--   The startup process is more robust and does not depend on environment variables.
--   The application state is more logical: the client only exists after authentication is attempted.
+- The application now fully supports the user-configurable API URL requirement.
+- The startup process is more robust and does not depend on environment variables.
+- The application state is more logical: the client only exists after authentication is attempted.
 
 ### Negative
 
--   The `login` command has a slight increase in responsibility.
--   The frontend must be prepared to handle errors from commands that are called before the client is available in the state.
+- The `login` command has a slight increase in responsibility.
+- The frontend must be prepared to handle errors from commands that are called before the client is available in the state.

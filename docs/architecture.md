@@ -22,14 +22,14 @@ Larch is a [Tauri](https://tauri.app/) application composed of three main parts:
 
 To ensure our backend is idiomatic, secure, and maintainable, we follow these patterns:
 
--   **Dynamic Dependency Injection:** Core services like the `TaigaClient` are created dynamically. For instance, the `TaigaClient` is instantiated by the `login` command using the user-provided API URL. Upon successful authentication, the client is placed into Tauri's managed state. Subsequent commands access this shared client instance via the `tauri::State` guard.
+- **Dynamic Dependency Injection:** Core services like the `TaigaClient` are created dynamically. For instance, the `TaigaClient` is instantiated by the `login` command using the user-provided API URL. Upon successful authentication, the client is placed into Tauri's managed state. Subsequent commands access this shared client instance via the `tauri::State` guard.
 
--   **Model Separation (Anti-Corruption Layer):** We maintain a strict separation between API data structures and our application's domain models.
-    -   **DTOs:** The `taiga-client` crate defines Data Transfer Objects (e.g., `TaigaProjectDto`) used for API serialization.
-    -   **Domain Models:** The `larch-app` crate defines its own internal models (e.g., `Project`).
-    -   **Mapping:** We use the `From` trait for clean, type-safe mapping from DTOs to Domain Models.
+- **Model Separation (Anti-Corruption Layer):** We maintain a strict separation between API data structures and our application's domain models.
+  - **DTOs:** The `taiga-client` crate defines Data Transfer Objects (e.g., `TaigaProjectDto`) used for API serialization.
+  - **Domain Models:** The `larch-app` crate defines its own internal models (e.g., `Project`).
+  - **Mapping:** We use the `From` trait for clean, type-safe mapping from DTOs to Domain Models.
 
--   **Secure Credential Management:** The Taiga API token is a secret and is **never** stored in application state. We use the `keyring-rs` crate to securely store the token in the operating system's native credential manager. Tauri commands retrieve the token from the keyring on-demand for each API call.
+- **Secure Credential Management:** The Taiga API token is a secret and is **never** stored in application state. We use the `keyring-rs` crate to securely store the token in the operating system's native credential manager. Tauri commands retrieve the token from the keyring on-demand for each API call.
 
 ## Project Organization
 

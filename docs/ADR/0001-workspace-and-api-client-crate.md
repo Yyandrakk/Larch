@@ -21,12 +21,12 @@ We have chosen **Option 3**. We will create a dedicated `taiga-client` crate wit
 
 ### Rationale
 
--   **Separation of Concerns:** This approach creates a strong boundary. The `taiga-client` crate has one responsibility: communicating with the Taiga API. The `larch-app` (Tauri) crate has a different responsibility: orchestrating the application and handling UI logic.
--   **Testability:** The `taiga-client` can be tested in complete isolation from the Tauri application, allowing for focused unit and integration tests on the API logic.
--   **Reusability:** While not a current requirement, a separate crate could theoretically be published and reused in other projects.
--   **Low Coupling:** The main application depends on the `taiga-client`'s public API, not its implementation details. We can change the underlying HTTP client (`reqwest`) or parsing logic (`serde`) within the client crate without affecting the main application, as long as the public interface remains stable.
+- **Separation of Concerns:** This approach creates a strong boundary. The `taiga-client` crate has one responsibility: communicating with the Taiga API. The `larch-app` (Tauri) crate has a different responsibility: orchestrating the application and handling UI logic.
+- **Testability:** The `taiga-client` can be tested in complete isolation from the Tauri application, allowing for focused unit and integration tests on the API logic.
+- **Reusability:** While not a current requirement, a separate crate could theoretically be published and reused in other projects.
+- **Low Coupling:** The main application depends on the `taiga-client`'s public API, not its implementation details. We can change the underlying HTTP client (`reqwest`) or parsing logic (`serde`) within the client crate without affecting the main application, as long as the public interface remains stable.
 
 ### Consequences
 
--   **Positive:** Enforces a clean, decoupled architecture from the start.
--   **Negative:** Slightly increases the initial setup complexity due to the creation of a workspace and an additional crate. This is a small, one-time cost for significant long-term architectural benefits.
+- **Positive:** Enforces a clean, decoupled architecture from the start.
+- **Negative:** Slightly increases the initial setup complexity due to the creation of a workspace and an additional crate. This is a small, one-time cost for significant long-term architectural benefits.
