@@ -30,7 +30,7 @@ jobs:
         # rpm is required for RPM bundle generation (Fedora support)
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.0-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev rpm
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev rpm libsoup-3.0-dev
 
       - name: setup node
         uses: actions/setup-node@v4
