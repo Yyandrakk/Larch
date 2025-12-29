@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import * as Popover from '$lib/components/ui/popover';
 	import * as Command from '$lib/components/ui/command';
 	import { Button } from '$lib/components/ui/button';
@@ -26,11 +27,19 @@
 	let open = $state(false);
 
 	// Local state for the form
-	let selectedProjectIds = $state(filters.project_ids || []);
-	let selectedStatusIds = $state(filters.status_ids || []);
-	let selectedAssigneeIds = $state(filters.assignee_ids || []);
-	let statusExclude = $state(filters.status_exclude || false);
-	let assigneeExclude = $state(filters.assignee_exclude || false);
+	let selectedProjectIds = $state(untrack(() => filters.project_ids || []));
+	let selectedStatusIds = $state(untrack(() => filters.status_ids || []));
+	let selectedAssigneeIds = $state(untrack(() => filters.assignee_ids || []));
+	let statusExclude = $state(untrack(() => filters.status_exclude || false));
+	let assigneeExclude = $state(untrack(() => filters.assignee_exclude || false));
+
+	$effect(() => {
+		selectedProjectIds = filters.project_ids || [];
+		selectedStatusIds = filters.status_ids || [];
+		selectedAssigneeIds = filters.assignee_ids || [];
+		statusExclude = filters.status_exclude || false;
+		assigneeExclude = filters.assignee_exclude || false;
+	});
 
 	// Derived options based on selected projects (or all projects if none selected)
 	let availableStatuses = $derived.by(() => {

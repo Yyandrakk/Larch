@@ -50,8 +50,8 @@ impl Repository for SqliteRepository {
             .await
             .map_err(|e| crate::error::Error::Database(e.to_string()))?;
 
-        if let Some(_) = existing {
-            let mut active: config::ActiveModel = existing.unwrap().into();
+        if let Some(existing_model) = existing {
+            let mut active: config::ActiveModel = existing_model.into();
             active.value = Set(value.to_string());
             active
                 .update(&self.conn)
@@ -127,3 +127,6 @@ impl Repository for SqliteRepository {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests;

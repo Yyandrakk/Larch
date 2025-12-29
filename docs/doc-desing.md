@@ -133,19 +133,19 @@ The primary goal is to provide a user with a single, actionable interface where 
 
 ### 4.2. Technology Stack
 
-- **Application Framework:** **Tauri** (Rust Backend + Webview Frontend).
+- **Application Framework:** **Tauri v2** (Rust Backend + Webview Frontend).
 - **Backend Logic:** **Rust**.
-- **Frontend:** **Svelte + TypeScript**.
+- **Frontend:** **Svelte 5 + TypeScript**.
   - _Justification:_ Chosen to learn a new, modern paradigm focused on performance and developer experience (DX). Its compiler-based nature aligns perfectly with Tauri's lightweight philosophy.
 - **Styling:** **Tailwind CSS**.
   - _Justification:_ Utility-first CSS for implementing a custom design (like one inspired by Google's Stitch) with maximum control.
 - **Secure Credential Storage:** **`keyring-rs` crate**.
-- **Local Configuration & Data:** **SQLite** (via `rusqlite` crate).
+- **Local Configuration & Data:** **SQLite** (via **`sea-orm`** ORM).
 
-### 4.3. Local Storage Strategy (SQLite)
+### 4.3. Local Storage Strategy (SQLite via SeaORM)
 
-- **`config` table:** Key-value store for `taiga_api_url`, `selected_project_ids`, etc.
-- **`drafts` table:** To store auto-saved `content` (TEXT) related to a `draft_type` (e.g., 'comment') and `related_id` (e.g., `issue_id`).
+- **`config` entity:** Key-value store for `taiga_api_url`, `selected_project_ids`, etc.
+- **`drafts` entity:** To store auto-saved `content` (TEXT) related to a `draft_type` (e.g., 'comment') and `related_id` (e.g., `issue_id`).
 
 ### 4.4. Internal API (Tauri Commands - Frontend to Backend)
 
@@ -187,7 +187,7 @@ This Rust module encapsulates _all_ communication with the external Taiga API.
 
 - **State Management:** **Svelte Native Stores** (`writable`, `derived`). Simple, powerful, and sufficient for managing application state.
 - **UI Components:** **`shadcn-svelte`**. Provides accessible, headless components styled with Tailwind, offering full design control.
-- **Data Table:** **`svelte-headless-table`** (likely integrated via `shadcn-svelte`). Covers the critical functionality for the issue list.
+- **Data Table:** Custom implementation using Shadcn/Tailwind. (Originally planned `svelte-headless-table`, but moved to simpler custom implementation for flexibility).
 
 ---
 

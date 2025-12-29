@@ -47,7 +47,7 @@
 					<Table.Row
 						class="hover:bg-muted/50 focus:ring-ring cursor-pointer transition-colors focus:ring-2 focus:outline-none"
 						role="button"
-						tabindex="0"
+						tabindex={0}
 						onclick={() => handleRowClick(issue.id)}
 						onkeydown={(e) => {
 							if (e.key === 'Enter' || e.key === ' ') {

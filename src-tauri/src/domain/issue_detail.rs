@@ -219,7 +219,7 @@ impl IssueDetail {
                 arr.iter()
                     .filter_map(|t| {
                         let tag_arr = t.as_array()?;
-                        let name = tag_arr.get(0)?.as_str()?.to_string();
+                        let name = tag_arr.first()?.as_str()?.to_string();
                         let color = tag_arr
                             .get(1)
                             .and_then(|c| c.as_str())
