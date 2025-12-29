@@ -29,6 +29,11 @@ To ensure our backend is idiomatic, secure, and maintainable, we follow these pa
   - **Domain Models:** The `larch-app` crate defines its own internal models (e.g., `Project`).
   - **Mapping:** We use the `From` trait for clean, type-safe mapping from DTOs to Domain Models.
 
+- **Data Access Layer (Repository Pattern):**
+  - We use **SeaORM** as the ORM to interact with the local SQLite database.
+  - **Repositories:** Data access is encapsulated in Repositories (e.g., `SqliteRepository`). This abstracts the specific database implementation from the rest of the application.
+  - **Entities:** SeaORM entities (`src-tauri/src/entities`) define the database schema.
+
 - **Secure Credential Management:** The Taiga API token is a secret and is **never** stored in application state. We use the `keyring-rs` crate to securely store the token in the operating system's native credential manager. Tauri commands retrieve the token from the keyring on-demand for each API call.
 
 ## Project Organization
