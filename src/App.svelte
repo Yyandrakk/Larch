@@ -92,15 +92,23 @@
 	</main>
 {:else}
 	<main
-		class="bg-background text-foreground min-h-screen"
+		class="bg-background-light dark:bg-background-dark relative min-h-screen text-gray-900 dark:text-white"
 		class:flex={currentScreen === 'login'}
 		class:items-center={currentScreen === 'login'}
 		class:justify-center={currentScreen === 'login'}
-		class:bg-gradient-to-br={currentScreen === 'login'}
-		class:from-indigo-500={currentScreen === 'login'}
-		class:via-purple-500={currentScreen === 'login'}
-		class:to-pink-500={currentScreen === 'login'}
 	>
+		{#if currentScreen === 'login'}
+			<!-- Background overlays from Stitch Reference -->
+			<div class="pointer-events-none fixed inset-0 z-0">
+				<div
+					class="via-background-dark to-background-dark absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20"
+				></div>
+				<div
+					class="absolute top-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent"
+				></div>
+			</div>
+		{/if}
+
 		{#if currentScreen === 'login'}
 			<LoginScreen onLoginSuccess={handleLoginSuccess} />
 		{:else if currentScreen === 'config'}
