@@ -32,6 +32,14 @@
 	--sidebar-accent-foreground: oklch(0.205 0 0);
 	--sidebar-border: oklch(0.922 0 0);
 	--sidebar-ring: oklch(0.708 0 0);
+
+	/* Login Screen Theme Tokens */
+	--login-bg-dark: #111821;
+	--login-card-bg: #161e2a;
+	--login-input-bg: #1a2432;
+	--login-border: #243347;
+	--login-muted: #6a7e99;
+	--login-primary: #196ee6;
 }
 
 .dark {
@@ -86,6 +94,9 @@
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
+	--color-background-light: #f6f7f8;
+	--color-background-dark: #111821;
+	--color-primary: #196ee6;
 	--color-chart-1: var(--chart-1);
 	--color-chart-2: var(--chart-2);
 	--color-chart-3: var(--chart-3);
@@ -105,6 +116,7 @@
 	* {
 		@apply border-border outline-ring/50;
 	}
+
 	body {
 		@apply bg-background text-foreground;
 	}

@@ -33,12 +33,12 @@ The vision for Larch is to create a centralized, multi-project issue management 
 ## 2. Goals & Non-Goals (The "Scope")
 
 ### 2.1. Goals (v2.0)
-- [ ] **Stitch-based Redesign:** Use AI-generated layouts to implement a professional UI for login, navigation, and dashboards.
-- [ ] **Sidebar Navigation:** Implement a persistent sidebar for switching between "Projects" and "Dashboard".
-- [ ] **Overlay Issue Detail:** Replace the full-page view with a Sidebar Drawer that superimposes over the main table for faster context-switching.
-- [ ] **Advanced Collision Management:** A new modal that allows diffing and merging local vs. server changes field by field.
-- [ ] **Secure Credential Storage:** Maintain the use of the native OS keychain for auth/refresh tokens.
-- [ ] **Desktop Application:** Standalone, cross-platform app built with Tauri v2.
+- **Stitch-based Redesign:** Use AI-generated layouts to implement a professional UI for login, navigation, and dashboards.
+- **Sidebar Navigation:** Implement a persistent sidebar for switching between "Projects" and "Dashboard".
+- **Overlay Issue Detail:** Replace the full-page view with a Sidebar Drawer that superimposes over the main table for faster context-switching.
+- **Advanced Collision Management:** A new modal that allows diffing and merging local vs. server changes field by field.
+- **Secure Credential Storage:** Maintain the use of the native OS keychain for auth/refresh tokens.
+- **Desktop Application:** Standalone, cross-platform app built with Tauri v2.
 
 ### 2.2. Non-Goals
 - **NO** "Saved Filters" (Presets): These remain a target for future versions (v2.1+).
@@ -63,12 +63,18 @@ The vision for Larch is to create a centralized, multi-project issue management 
 
 ### 3.3. User Stories
 - **Auth & Nav:** - *As Alex,* I want a modern, sidebar-driven navigation to switch instantly between project setup and my triage dashboard.
+  - **Acceptance Criteria:**
+    - Login page uses Stitch-generated layout.
+    - Sidebar loads in < 500ms.
+    - Navigation between "Projects" and "Dashboard" does not reload the page.
 - **Dashboard & Filtering:**
   - *As Alex,* I want to filter issues by inclusion/exclusion logic and have the app remember my "Triage View" defaults.
+  - **Acceptance Criteria:**
+    - Filters persist across sessions in SQLite.
+    - Triage view loads pre-filtered issues on app launch.
 - **Issue Management:** 
   - *As Alex,* I want to edit an issue in an overlay sidebar so I don't lose my place in the aggregated list.
   - *As Alex,* if a collision occurs, I want to see exactly what changed on the server vs. my local draft and choose which changes to keep.
-
 ---
 
 ## 4. System Architecture (The "How")
@@ -105,13 +111,13 @@ The v2.0 collision system improves upon the v1.1 warning:
 ## 5. Implementation & Rollout Plan (v2.0)
 
 ### 5.1. Milestones
-1.  **M1: Rediseño del Login.** Aplicación del layout generado por Stitch a la pantalla de acceso.
-2.  **M2: Rediseño del Flujo Principal.**
-    - 2.1 **Barra Lateral:** Implementación de la navegación persistente.
-    - 2.2 **Página de Proyectos:** Rediseño del selector de proyectos.
-    - 2.3 **Dashboard:** Rediseño de la tabla agregada y UI de filtros avanzados.
-3.  **M3: Barra Lateral de Detalle.** Implementación del componente de detalle tipo *overlay* que se superpone a la tabla.
-4.  **M4: Modal de Colisiones.** Implementación del sistema de resolución de conflictos avanzado (Git-diff).
+1.  **M1: Login Redesign.** Apply Stitch-generated layout to the login screen.
+2.  **M2: Main Flow Redesign.**
+    - 2.1 **Sidebar Navigation:** Implement persistent navigation between projects and dashboard.
+    - 2.2 **Project Selector:** Redesign the project selection UI.
+    - 2.3 **Dashboard:** Redesign aggregated issue table and advanced filter UI.
+3.  **M3: Detail Sidebar (Overlay).** Implement the overlay sidebar component for issue detail viewing.
+4.  **M4: Collision Resolution Modal.** Implement advanced conflict resolution system (Git-like diff).
 
 ### 5.2. Testing Strategy
 - **Rust Unit Tests:** Critical business logic, API service parsing, and ETag handling.
@@ -124,4 +130,4 @@ The v2.0 collision system improves upon the v1.1 warning:
 
 - **Risk 1 (High):** Complexity of translating Stitch-generated HTML/CSS into reactive Svelte 5 components while maintaining consistency.
 - **Risk 2 (Medium):** Managing UI focus and scroll states when the sidebar overlay is open above the main table.
-- **Risk 3:** Performance impact of the diffing logic on the client-side for very large issue descriptions.
+- **Risk 3 (Medium):** Performance impact of the diffing logic on the client-side for very large issue descriptions. Mitigation: implement lazy diffing or pagination for large text fields.
