@@ -1,0 +1,54 @@
+<script lang="ts">
+	import { t } from 'svelte-i18n';
+	import { LayoutDashboard, FolderOpen } from '@lucide/svelte';
+
+	type Screen = 'projects' | 'dashboard';
+	let {
+		currentScreen,
+		onNavigate
+	}: {
+		currentScreen: Screen;
+		onNavigate: (screen: Screen) => void;
+	} = $props();
+</script>
+
+<aside class="flex w-64 flex-shrink-0 flex-col border-r border-[#243347] bg-[#111822]">
+	<div class="flex flex-col gap-4 p-4">
+		<div class="mb-4 flex items-center gap-3">
+			<div
+				class="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#196ee6] to-blue-600 shadow-lg"
+			>
+				<LayoutDashboard class="h-6 w-6 text-white" />
+			</div>
+			<div class="flex flex-col">
+				<h1 class="text-base leading-normal font-bold tracking-tight text-white">
+					{$t('app.title')}
+				</h1>
+				<p class="text-xs font-normal text-[#93a9c8]">{$t('nav.workspace')}</p>
+			</div>
+		</div>
+
+		<nav class="flex flex-col gap-1">
+			<button
+				onclick={() => onNavigate('dashboard')}
+				class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors {currentScreen ===
+				'dashboard'
+					? 'bg-[#243347] text-white'
+					: 'text-[#93a9c8] hover:bg-[#243347]/50 hover:text-white'}"
+			>
+				<LayoutDashboard class="h-5 w-5 {currentScreen === 'dashboard' ? 'text-[#196ee6]' : ''}" />
+				<span class="text-sm font-medium">{$t('nav.dashboard')}</span>
+			</button>
+			<button
+				onclick={() => onNavigate('projects')}
+				class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors {currentScreen ===
+				'projects'
+					? 'bg-[#243347] text-white'
+					: 'text-[#93a9c8] hover:bg-[#243347]/50 hover:text-white'}"
+			>
+				<FolderOpen class="h-5 w-5 {currentScreen === 'projects' ? 'text-[#196ee6]' : ''}" />
+				<span class="text-sm font-medium">{$t('nav.projects')}</span>
+			</button>
+		</nav>
+	</div>
+</aside>

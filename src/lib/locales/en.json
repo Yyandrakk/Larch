@@ -2,6 +2,16 @@
 	"app": {
 		"title": "Larch"
 	},
+	"nav": {
+		"dashboard": "Dashboard",
+		"projects": "Projects",
+		"workspace": "Workspace"
+	},
+	"header": {
+		"user": "User",
+		"logout": "Log Out",
+		"loggedOut": "Logged out successfully"
+	},
 	"login": {
 		"welcomeBack": "Welcome back",
 		"signInSubtitle": "Sign in to your Taiga dashboard",
@@ -24,35 +34,88 @@
 		"loginButton": "Login",
 		"loadingButton": "Logging in..."
 	},
+	"projects": {
+		"title": "Project Configuration",
+		"subtitle": "Select and toggle projects to include in your global view.",
+		"selected": "Selected",
+		"searchPlaceholder": "Search projects...",
+		"noProjects": "No projects found.",
+		"public": "Public",
+		"private": "Private",
+		"team": "Team",
+		"projectsSelected": "projects selected",
+		"saveAndContinue": "Save Changes",
+		"saved": "Project selection saved"
+	},
 	"errors": {
 		"unknown": "An unknown error occurred.",
 		"prefix": "Error:"
 	},
 	"common": {
 		"retry": "Retry",
-		"close": "Close"
+		"close": "Close",
+		"cancel": "Cancel",
+		"saving": "Saving..."
 	},
 	"dashboard": {
 		"title": "Dashboard",
+		"allIssues": "All Issues",
+		"subtitlePrefix": "Aggregated view across",
+		"subtitleSuffix": "active projects",
 		"searchPlaceholder": "Search issues...",
 		"refresh": "Refresh",
-		"noIssues": "No issues found."
+		"noIssues": "No issues found.",
+		"loaded": "Loaded issues:",
+		"showing": "Showing",
+		"of": "of",
+		"issues": "issues"
 	},
 	"table": {
+		"issue": "Issue",
 		"subject": "Subject",
 		"status": "Status",
 		"project": "Project",
-		"assignedTo": "Assigned To",
+		"assignedTo": "Assignee",
 		"unassigned": "Unassigned"
 	},
 	"filters": {
 		"filter": "Filter",
 		"reset": "Reset",
 		"projects": "Projects",
+		"project": "Project",
 		"status": "Status",
 		"assignee": "Assignee",
-		"include": "Is",
-		"exclude": "Is Not"
+		"assignees": "assignees",
+		"include": "Include",
+		"exclude": "Exclude",
+		"addFilter": "Add Filter",
+		"projectFilter": "Project Filter",
+		"statusFilter": "Status Filter",
+		"assigneeFilter": "Assignee Filter",
+		"searchProjects": "Search projects...",
+		"searchStatuses": "Search statuses...",
+		"searchPeople": "Search people...",
+		"unassigned": "Unassigned",
+		"unifiedStatuses": "Unified Statuses",
+		"projectSpecific": "Project Specific",
+		"mergedFrom": "Merged from {count} projects",
+		"uniqueWorkflows": "Unique workflows",
+		"selected": "selected",
+		"included": "included",
+		"excluded": "excluded",
+		"apply": "Apply Filter",
+		"clear": "Clear",
+		"clearAll": "Clear All",
+		"you": "You",
+		"me": "Me",
+		"allProjects": "All",
+		"proj": "Proj",
+		"multiple": "Multiple",
+		"common": "Common",
+		"allFiltersActive": "All filters are active",
+		"noStatuses": "No statuses found",
+		"noResults": "No results found",
+		"suggestions": "Suggestions"
 	},
 	"issueDetail": {
 		"loading": "Loading issue...",
