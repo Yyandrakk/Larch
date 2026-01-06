@@ -38,6 +38,36 @@ export interface ProjectMetadata {
 	id: number;
 	statuses: IssueStatus[];
 	members: Member[];
+	priorities: Priority[];
+	severities: Severity[];
+	issue_types: IssueType[];
+	tags_colors: TagColor[];
+}
+
+export interface Priority {
+	id: number;
+	name: string;
+	color: string;
+	order: number;
+}
+
+export interface Severity {
+	id: number;
+	name: string;
+	color: string;
+	order: number;
+}
+
+export interface IssueType {
+	id: number;
+	name: string;
+	color: string;
+	order: number;
+}
+
+export interface TagColor {
+	name: string;
+	color?: string;
 }
 
 export interface FilterObject {
@@ -137,6 +167,12 @@ export interface IssueDetail {
 	previous_issue?: IssueNeighbor;
 }
 
+export interface FieldChange {
+	field: string;
+	old_value?: string;
+	new_value?: string;
+}
+
 export interface HistoryEntry {
 	id: string;
 	user_id: number;
@@ -149,4 +185,5 @@ export interface HistoryEntry {
 	comment_html?: string;
 	is_deleted: boolean;
 	is_edited: boolean;
+	changes: FieldChange[];
 }

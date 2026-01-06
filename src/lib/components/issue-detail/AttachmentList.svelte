@@ -2,18 +2,23 @@
 	import type { Attachment } from '$lib/types';
 	import { Button } from '$lib/components/ui/button';
 	import { File, Image, Download, ExternalLink } from '@lucide/svelte';
+	import { openUrl } from '@tauri-apps/plugin-opener';
 
 	let { attachments }: { attachments: Attachment[] } = $props();
 
-	function openAttachment(url: string) {
-		window.open(url, '_blank', 'noopener,noreferrer');
+	async function openAttachment(url: string) {
+		try {
+			await openUrl(url);
+		} catch (e) {
+			console.error('Failed to open attachment URL:', e);
+		}
 	}
 </script>
 
 <div class="space-y-2">
 	{#each attachments as attachment (attachment.id)}
 		<div
-			class="bg-muted/30 hover:bg-muted/50 group flex items-center gap-3 rounded-lg p-3 transition-colors"
+			class="bg-secondary/50 hover:bg-secondary/70 group flex items-center gap-3 rounded-lg p-3 transition-colors"
 		>
 			<!-- Icon/Thumbnail -->
 			{#if attachment.is_image && attachment.thumbnail_url}
@@ -23,11 +28,11 @@
 					class="h-10 w-10 rounded object-cover"
 				/>
 			{:else if attachment.is_image}
-				<div class="bg-muted flex h-10 w-10 items-center justify-center rounded">
+				<div class="bg-secondary flex h-10 w-10 items-center justify-center rounded">
 					<Image class="text-muted-foreground h-5 w-5" />
 				</div>
 			{:else}
-				<div class="bg-muted flex h-10 w-10 items-center justify-center rounded">
+				<div class="bg-secondary flex h-10 w-10 items-center justify-center rounded">
 					<File class="text-muted-foreground h-5 w-5" />
 				</div>
 			{/if}

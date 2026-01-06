@@ -55,14 +55,30 @@ pub struct MemberDto {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct TagColorDto {
+    pub name: String,
+    pub color: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct ProjectDto {
     pub id: i64,
     pub name: String,
     pub slug: String,
     pub description: String,
     pub owner: UserShort,
+    #[serde(default)]
     pub issue_statuses: Option<Vec<IssueStatusDto>>,
+    #[serde(default)]
     pub members: Option<Vec<MemberDto>>,
+    #[serde(default)]
+    pub priorities: Option<Vec<PriorityDto>>,
+    #[serde(default)]
+    pub severities: Option<Vec<SeverityDto>>,
+    #[serde(default)]
+    pub issue_types: Option<Vec<IssueTypeDto>>,
+    #[serde(default)]
+    pub tags_colors: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -232,7 +248,8 @@ pub struct IssueTypeDto {
     pub name: String,
     pub color: String,
     pub order: i64,
-    pub project: i64,
+    #[serde(default)]
+    pub project: Option<i64>,
 }
 
 /// Priority detail (from project)
@@ -242,7 +259,8 @@ pub struct PriorityDto {
     pub name: String,
     pub color: String,
     pub order: i64,
-    pub project: i64,
+    #[serde(default)]
+    pub project: Option<i64>,
 }
 
 /// Severity detail (from project)
@@ -252,7 +270,19 @@ pub struct SeverityDto {
     pub name: String,
     pub color: String,
     pub order: i64,
-    pub project: i64,
+    #[serde(default)]
+    pub project: Option<i64>,
+}
+
+/// Membership detail (GET /api/v1/memberships?project={id})
+#[derive(Debug, Clone, Deserialize)]
+pub struct MembershipDto {
+    pub id: i64,
+    pub user: Option<i64>,
+    pub full_name: Option<String>,
+    pub role_name: String,
+    pub photo: Option<String>,
+    pub is_admin: bool,
 }
 
 // ============================================================================
@@ -279,4 +309,17 @@ pub struct PatchIssueRequest {
     /// - `Some(Some(id))`: Serialized as `id` (assigns to user).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub assigned_to: Option<Option<i64>>,
+    /// The new priority ID (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<i64>,
+    /// The new severity ID (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub severity: Option<i64>,
+    /// The new issue type ID (optional)
+    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+    pub type_: Option<i64>,
+    /// Tags as [[name, color|null], ...] (optional)
+    /// When set, replaces all existing tags with the provided list
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<serde_json::Value>,
 }

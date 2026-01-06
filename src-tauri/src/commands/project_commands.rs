@@ -55,8 +55,14 @@ pub async fn get_aggregated_issues(
     };
 
     // 2. Apply UI project filter if present
-    if let Some(ui_project_ids) = filters.project_ids {
-        target_project_ids.retain(|id| ui_project_ids.contains(id));
+    if let Some(ref ui_project_ids) = filters.project_ids {
+        if filters.project_exclude.unwrap_or(false) {
+            // Exclude these projects - keep ones NOT in ui_project_ids
+            target_project_ids.retain(|id| !ui_project_ids.contains(id));
+        } else {
+            // Include only these projects - keep ones IN ui_project_ids
+            target_project_ids.retain(|id| ui_project_ids.contains(id));
+        }
     }
 
     if target_project_ids.is_empty() {
@@ -125,6 +131,8 @@ pub async fn get_project_metadata(
     client: tauri::State<'_, TaigaClient>,
     project_ids: Vec<i64>,
 ) -> Result<std::collections::HashMap<i64, crate::domain::project::ProjectMetadata>> {
+    use crate::domain::project::{IssueStatus, IssueType, Member, Priority, Severity, TagColor};
+
     let token = credentials::get_api_token()?;
     let mut tasks = Vec::new();
 
@@ -132,44 +140,150 @@ pub async fn get_project_metadata(
         let client = client.inner().clone();
         let token = token.clone();
         tasks.push(tauri::async_runtime::spawn(async move {
-            match client.get_project(&token, pid).await {
-                Ok(dto) => {
-                    let statuses: Vec<crate::domain::project::IssueStatus> = dto
-                        .issue_statuses
-                        .unwrap_or_default()
-                        .into_iter()
-                        .map(|s| crate::domain::project::IssueStatus {
-                            id: s.id,
-                            name: s.name,
-                            color: s.color,
-                            is_closed: s.is_closed,
-                        })
-                        .collect();
-
-                    let members = dto
-                        .members
-                        .unwrap_or_default()
-                        .into_iter()
-                        .map(|m| crate::domain::project::Member {
-                            id: m.id, // In ProjectDto, id is the User ID
-                            user_id: Some(m.id),
-                            full_name: m.full_name,
-                            role_name: m.role_name,
-                            photo: m.photo,
-                        })
-                        .collect();
-
-                    Some(crate::domain::project::ProjectMetadata {
-                        id: pid,
-                        statuses,
-                        members,
-                    })
-                }
+            let project_res = client.get_project(&token, pid).await;
+            
+            let priorities_res = match client.get_priorities(&token, pid).await {
+                Ok(p) => Ok(p),
                 Err(e) => {
-                    log::error!("Failed to fetch project metadata for {}: {}", pid, e);
-                    None
+                    log::error!("get_priorities failed for {}: {}", pid, e);
+                    Err(e)
                 }
-            }
+            };
+            
+            let severities_res = match client.get_severities(&token, pid).await {
+                Ok(s) => Ok(s),
+                Err(e) => {
+                    log::error!("get_severities failed for {}: {}", pid, e);
+                    Err(e)
+                }
+            };
+            
+            let types_res = match client.get_issue_types(&token, pid).await {
+                Ok(t) => Ok(t),
+                Err(e) => {
+                    log::error!("get_issue_types failed for {}: {}", pid, e);
+                    Err(e)
+                }
+            };
+            
+            let tags_res = match client.get_project_tags_colors(&token, pid).await {
+                Ok(t) => Ok(t),
+                Err(e) => {
+                    log::error!("get_project_tags_colors failed for {}: {}", pid, e);
+                    Err(e)
+                }
+            };
+            
+            let members_res = match client.get_memberships(&token, pid).await {
+                Ok(m) => Ok(m),
+                Err(e) => {
+                    log::error!("get_memberships failed for {}: {}", pid, e);
+                    Err(e)
+                }
+            };
+
+            let dto = match project_res {
+                Ok(p) => p,
+                Err(e) => {
+                    log::error!("Failed to fetch project {} metadata: {}", pid, e);
+                    return None;
+                }
+            };
+
+            let statuses: Vec<IssueStatus> = dto
+                .issue_statuses
+                .unwrap_or_default()
+                .into_iter()
+                .map(|s| IssueStatus {
+                    id: s.id,
+                    name: s.name,
+                    color: s.color,
+                    is_closed: s.is_closed,
+                })
+                .collect();
+
+            let members: Vec<Member> = members_res
+                .unwrap_or_else(|e| {
+                    log::warn!("Failed to fetch memberships for {}: {}", pid, e);
+                    vec![]
+                })
+                .into_iter()
+                .map(|m| Member {
+                    id: m.id,
+                    user_id: m.user,
+                    full_name: m.full_name.unwrap_or_default(),
+                    role_name: m.role_name,
+                    photo: m.photo,
+                })
+                .collect();
+
+            let priorities: Vec<Priority> = priorities_res
+                .unwrap_or_else(|e| {
+                    log::warn!("Failed to fetch priorities for {}: {}", pid, e);
+                    vec![]
+                })
+                .into_iter()
+                .map(|p| Priority {
+                    id: p.id,
+                    name: p.name,
+                    color: p.color,
+                    order: p.order,
+                })
+                .collect();
+
+            let severities: Vec<Severity> = severities_res
+                .unwrap_or_else(|e| {
+                    log::warn!("Failed to fetch severities for {}: {}", pid, e);
+                    vec![]
+                })
+                .into_iter()
+                .map(|s| Severity {
+                    id: s.id,
+                    name: s.name,
+                    color: s.color,
+                    order: s.order,
+                })
+                .collect();
+
+            let issue_types: Vec<IssueType> = types_res
+                .unwrap_or_else(|e| {
+                    log::warn!("Failed to fetch issue types for {}: {}", pid, e);
+                    vec![]
+                })
+                .into_iter()
+                .map(|t| IssueType {
+                    id: t.id,
+                    name: t.name,
+                    color: t.color,
+                    order: t.order,
+                })
+                .collect();
+
+            let tags_colors: Vec<TagColor> = tags_res
+                .unwrap_or_else(|e| {
+                    log::warn!("Failed to fetch tags colors for {}: {}", pid, e);
+                    serde_json::Value::Null
+                })
+                .as_object()
+                .map(|obj| {
+                    obj.iter()
+                        .map(|(name, color)| TagColor {
+                            name: name.clone(),
+                            color: color.as_str().map(|s| s.to_string()),
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+
+            Some(crate::domain::project::ProjectMetadata {
+                id: pid,
+                statuses,
+                members,
+                priorities,
+                severities,
+                issue_types,
+                tags_colors,
+            })
         }));
     }
 

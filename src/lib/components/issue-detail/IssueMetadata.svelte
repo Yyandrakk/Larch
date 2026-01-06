@@ -183,7 +183,7 @@
 	</div>
 
 	<!-- Assignee -->
-	<div class="bg-muted/30 flex items-center gap-3 rounded-lg p-3">
+	<div class="bg-secondary/50 flex items-center gap-3 rounded-lg p-3">
 		<User class="text-muted-foreground h-4 w-4" />
 		<span class="text-muted-foreground text-sm">Assigned to:</span>
 		{#if canEditAssignee}
@@ -294,7 +294,7 @@
 		<div
 			class="flex items-center gap-2 rounded-lg p-2 text-sm {issue.due_date_status === 'past_due'
 				? 'bg-destructive/10 text-destructive'
-				: 'bg-muted/30'}"
+				: 'bg-card/30'}"
 		>
 			{#if issue.due_date_status === 'past_due'}
 				<AlertTriangle class="h-4 w-4" />

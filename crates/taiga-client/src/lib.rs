@@ -1,4 +1,4 @@
-use reqwest::StatusCode;
+use reqwest::{multipart, StatusCode};
 use secrecy::{ExposeSecret, Secret};
 use url::Url;
 
@@ -123,8 +123,18 @@ impl TaigaClient {
         log::info!("Get Project response status: {}", response.status());
 
         if response.status().is_success() {
-            let project = response.json::<ProjectDto>().await?;
-            Ok(project)
+            let body = response.text().await?;
+            match serde_json::from_str::<ProjectDto>(&body) {
+                Ok(project) => Ok(project),
+                Err(e) => {
+                    log::error!(
+                        "Failed to parse ProjectDto: {}. Body (first 1000 chars): {}",
+                        e,
+                        &body[..body.len().min(1000)]
+                    );
+                    Err(TaigaClientError::Serde(e))
+                }
+            }
         } else {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
@@ -374,6 +384,290 @@ impl TaigaClient {
                 }
             };
             Err(err)
+        }
+    }
+
+    /// List attachments for a specific issue
+    /// GET /api/v1/issues/attachments?project={project_id}&object_id={issue_id}
+    pub async fn list_issue_attachments(
+        &self,
+        token: &Secret<String>,
+        project_id: i64,
+        issue_id: i64,
+    ) -> Result<Vec<models::AttachmentDto>, TaigaClientError> {
+        let url = self.build_url("issues/attachments")?;
+        log::info!(
+            "Fetching attachments for issue {} in project {} from {}",
+            issue_id,
+            project_id,
+            url
+        );
+
+        let response = self
+            .client
+            .get(url)
+            .query(&[
+                ("project", project_id.to_string()),
+                ("object_id", issue_id.to_string()),
+            ])
+            .bearer_auth(token.expose_secret())
+            .send()
+            .await?;
+
+        log::info!("List attachments response status: {}", response.status());
+
+        if response.status().is_success() {
+            let body = response.text().await?;
+
+            match serde_json::from_str::<Vec<models::AttachmentDto>>(&body) {
+                Ok(attachments) => {
+                    log::info!("Successfully parsed {} attachments", attachments.len());
+                    Ok(attachments)
+                }
+                Err(e) => {
+                    log::error!("Failed to parse attachments response: {}", e);
+                    log::error!(
+                        "Raw response body (first 2000 chars): {}",
+                        &body[..body.len().min(2000)]
+                    );
+                    Err(TaigaClientError::Serde(e))
+                }
+            }
+        } else {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            log::error!("List attachments failed. Status: {}, Body: {}", status, body);
+            let err = match status {
+                StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                    TaigaClientError::Unauthorized(status)
+                }
+                _ => TaigaClientError::AuthFailed(status),
+            };
+            Err(err)
+        }
+    }
+
+    pub async fn upload_issue_attachment(
+        &self,
+        token: &Secret<String>,
+        project_id: i64,
+        issue_id: i64,
+        file_name: String,
+        file_data: Vec<u8>,
+    ) -> Result<models::AttachmentDto, TaigaClientError> {
+        let url = self.build_url("issues/attachments")?;
+        log::info!(
+            "Uploading attachment {} for issue {} in project {}",
+            file_name,
+            issue_id,
+            project_id
+        );
+
+        let file_part = multipart::Part::bytes(file_data)
+            .file_name(file_name)
+            .mime_str("application/octet-stream")
+            .unwrap();
+
+        let form = multipart::Form::new()
+            .text("object_id", issue_id.to_string())
+            .text("project", project_id.to_string())
+            .part("attached_file", file_part);
+
+        let response = self
+            .client
+            .post(url)
+            .bearer_auth(token.expose_secret())
+            .multipart(form)
+            .send()
+            .await?;
+
+        log::info!("Upload attachment response status: {}", response.status());
+
+        if response.status().is_success() {
+            let attachment = response.json::<models::AttachmentDto>().await?;
+            Ok(attachment)
+        } else {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            log::error!("Upload attachment failed. Status: {}, Body: {}", status, body);
+            let err = match status {
+                StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                    TaigaClientError::Unauthorized(status)
+                }
+                _ => TaigaClientError::AuthFailed(status),
+            };
+            Err(err)
+        }
+    }
+
+    pub async fn delete_issue_attachment(
+        &self,
+        token: &Secret<String>,
+        attachment_id: i64,
+    ) -> Result<(), TaigaClientError> {
+        let url = self.build_url(&format!("issues/attachments/{}", attachment_id))?;
+        log::info!("Deleting attachment {}", attachment_id);
+
+        let response = self
+            .client
+            .delete(url)
+            .bearer_auth(token.expose_secret())
+            .send()
+            .await?;
+
+        log::info!("Delete attachment response status: {}", response.status());
+
+        if response.status().is_success() || response.status() == StatusCode::NO_CONTENT {
+            Ok(())
+        } else {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            log::error!("Delete attachment failed. Status: {}, Body: {}", status, body);
+            let err = match status {
+                StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                    TaigaClientError::Unauthorized(status)
+                }
+                _ => TaigaClientError::AuthFailed(status),
+            };
+            Err(err)
+        }
+    }
+
+    pub async fn get_priorities(
+        &self,
+        token: &Secret<String>,
+        project_id: i64,
+    ) -> Result<Vec<models::PriorityDto>, TaigaClientError> {
+        let url = self.build_url("priorities")?;
+        log::info!("Fetching priorities for project {}", project_id);
+
+        let response = self
+            .client
+            .get(url)
+            .query(&[("project", project_id)])
+            .bearer_auth(token.expose_secret())
+            .send()
+            .await?;
+
+        if response.status().is_success() {
+            Ok(response.json().await?)
+        } else {
+            let status = response.status();
+            log::error!("Get priorities failed. Status: {}", status);
+            Err(TaigaClientError::AuthFailed(status))
+        }
+    }
+
+    pub async fn get_severities(
+        &self,
+        token: &Secret<String>,
+        project_id: i64,
+    ) -> Result<Vec<models::SeverityDto>, TaigaClientError> {
+        let url = self.build_url("severities")?;
+        log::info!("Fetching severities for project {}", project_id);
+
+        let response = self
+            .client
+            .get(url)
+            .query(&[("project", project_id)])
+            .bearer_auth(token.expose_secret())
+            .send()
+            .await?;
+
+        if response.status().is_success() {
+            Ok(response.json().await?)
+        } else {
+            let status = response.status();
+            log::error!("Get severities failed. Status: {}", status);
+            Err(TaigaClientError::AuthFailed(status))
+        }
+    }
+
+    pub async fn get_issue_types(
+        &self,
+        token: &Secret<String>,
+        project_id: i64,
+    ) -> Result<Vec<models::IssueTypeDto>, TaigaClientError> {
+        let url = self.build_url("issue-types")?;
+        log::info!("Fetching issue types for project {}", project_id);
+
+        let response = self
+            .client
+            .get(url)
+            .query(&[("project", project_id)])
+            .bearer_auth(token.expose_secret())
+            .send()
+            .await?;
+
+        if response.status().is_success() {
+            Ok(response.json().await?)
+        } else {
+            let status = response.status();
+            log::error!("Get issue types failed. Status: {}", status);
+            Err(TaigaClientError::AuthFailed(status))
+        }
+    }
+
+    pub async fn get_project_tags_colors(
+        &self,
+        token: &Secret<String>,
+        project_id: i64,
+    ) -> Result<serde_json::Value, TaigaClientError> {
+        let url = self.build_url(&format!("projects/{}/tags_colors", project_id))?;
+        log::info!("Fetching tags colors for project {}", project_id);
+
+        let response = self
+            .client
+            .get(url)
+            .bearer_auth(token.expose_secret())
+            .send()
+            .await?;
+
+        if response.status().is_success() {
+            Ok(response.json().await?)
+        } else {
+            let status = response.status();
+            log::error!("Get tags colors failed. Status: {}", status);
+            Err(TaigaClientError::AuthFailed(status))
+        }
+    }
+
+    pub async fn get_memberships(
+        &self,
+        token: &Secret<String>,
+        project_id: i64,
+    ) -> Result<Vec<models::MembershipDto>, TaigaClientError> {
+        let url = self.build_url("memberships")?;
+        log::info!("Fetching memberships for project {}", project_id);
+
+        let response = self
+            .client
+            .get(url)
+            .query(&[("project", project_id)])
+            .bearer_auth(token.expose_secret())
+            .send()
+            .await?;
+
+        if response.status().is_success() {
+            let body = response.text().await?;
+            match serde_json::from_str::<Vec<models::MembershipDto>>(&body) {
+                Ok(memberships) => Ok(memberships),
+                Err(e) => {
+                    log::error!(
+                        "Failed to parse memberships: {}. Body (first 500 chars): {}",
+                        e,
+                        &body[..body.len().min(500)]
+                    );
+                    Err(TaigaClientError::Serde(e))
+                }
+            }
+        } else {
+            let status = response.status();
+            log::error!("Get memberships failed. Status: {}", status);
+            Err(TaigaClientError::AuthFailed(status))
         }
     }
 }

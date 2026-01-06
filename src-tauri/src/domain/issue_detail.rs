@@ -112,6 +112,13 @@ pub struct Comment {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct FieldChange {
+    pub field: String,
+    pub old_value: Option<String>,
+    pub new_value: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct HistoryEntry {
     pub id: String,
     pub user_id: i64,
@@ -124,6 +131,7 @@ pub struct HistoryEntry {
     pub comment_html: Option<String>,
     pub is_deleted: bool,
     pub is_edited: bool,
+    pub changes: Vec<FieldChange>,
 }
 
 // ============================================================================
@@ -168,6 +176,8 @@ impl From<&IssueHistoryEntryDto> for HistoryEntry {
         let is_deleted = dto.delete_comment_date.is_some();
         let is_edited = dto.edit_comment_date.is_some();
 
+        let changes = parse_values_diff(dto.values_diff.as_ref());
+
         Self {
             id: dto.id.clone(),
             user_id: dto.user.pk,
@@ -188,7 +198,46 @@ impl From<&IssueHistoryEntryDto> for HistoryEntry {
             },
             is_deleted,
             is_edited,
+            changes,
         }
+    }
+}
+
+fn parse_values_diff(values_diff: Option<&serde_json::Value>) -> Vec<FieldChange> {
+    let mut changes = Vec::new();
+
+    if let Some(obj) = values_diff.and_then(|v| v.as_object()) {
+        for (field, values) in obj {
+            if let Some(arr) = values.as_array() {
+                let old_value = arr.first().and_then(value_to_string);
+                let new_value = arr.get(1).and_then(value_to_string);
+                changes.push(FieldChange {
+                    field: field.clone(),
+                    old_value,
+                    new_value,
+                });
+            }
+        }
+    }
+
+    changes
+}
+
+fn value_to_string(v: &serde_json::Value) -> Option<String> {
+    match v {
+        serde_json::Value::Null => None,
+        serde_json::Value::String(s) => Some(s.clone()),
+        serde_json::Value::Number(n) => Some(n.to_string()),
+        serde_json::Value::Bool(b) => Some(b.to_string()),
+        serde_json::Value::Array(arr) => {
+            let items: Vec<String> = arr.iter().filter_map(value_to_string).collect();
+            if items.is_empty() {
+                None
+            } else {
+                Some(items.join(", "))
+            }
+        }
+        serde_json::Value::Object(_) => Some(v.to_string()),
     }
 }
 
