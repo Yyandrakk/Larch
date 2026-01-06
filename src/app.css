@@ -121,3 +121,62 @@
 		@apply bg-background text-foreground;
 	}
 }
+
+/* ============================================
+   Stitch Design System - Dark Mode Styles
+   ============================================ */
+
+/* Custom Scrollbar for Dark Theme */
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: #111821;
+}
+
+::-webkit-scrollbar-thumb {
+	background: #243347;
+	border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: #33445c;
+}
+
+/* Table Row Hover Effect */
+.table-row-hover:hover td {
+	background-color: #1a2433;
+}
+
+/* Stitch Toggle Switch Override */
+[data-slot='switch'][data-state='checked'] {
+	background-color: #196ee6 !important;
+	border-color: #196ee6 !important;
+}
+
+[data-slot='switch'][data-state='unchecked'] {
+	background-color: #33445e !important;
+	border-color: #33445e !important;
+}
+
+[data-slot='switch'] {
+	height: 28px !important;
+	width: 48px !important;
+	padding: 2px !important;
+}
+
+[data-slot='switch-thumb'] {
+	height: 24px !important;
+	width: 24px !important;
+	background-color: white !important;
+}
+
+[data-slot='switch-thumb'][data-state='checked'] {
+	transform: translateX(20px) !important;
+}
+
+[data-slot='switch-thumb'][data-state='unchecked'] {
+	transform: translateX(0) !important;
+}

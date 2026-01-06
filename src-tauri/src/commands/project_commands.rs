@@ -14,6 +14,7 @@ pub struct FilterObject {
     pub assignee_ids: Option<Vec<i64>>,
     pub assignee_exclude: Option<bool>,
     pub project_ids: Option<Vec<i64>>,
+    pub project_exclude: Option<bool>,
 }
 
 #[tauri::command]
@@ -67,7 +68,7 @@ pub async fn get_aggregated_issues(
     if let Some(status_ids) = filters.status_ids {
         if !status_ids.is_empty() {
             let key = if filters.status_exclude.unwrap_or(false) {
-                "status__not_in"
+                "exclude_status"
             } else {
                 "status"
             };
@@ -83,13 +84,13 @@ pub async fn get_aggregated_issues(
     if let Some(assignee_ids) = filters.assignee_ids {
         if !assignee_ids.is_empty() {
             let key = if filters.assignee_exclude.unwrap_or(false) {
-                "assigned_to__not_in"
+                "exclude_assigned_to"
             } else {
                 "assigned_to"
             };
             let val = assignee_ids
                 .iter()
-                .map(|id| id.to_string())
+                .map(|id| if *id == -1 { "null".to_string() } else { id.to_string() })
                 .collect::<Vec<_>>()
                 .join(",");
             query_params.push((key.to_string(), val));

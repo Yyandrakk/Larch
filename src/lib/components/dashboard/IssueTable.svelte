@@ -1,8 +1,7 @@
 <script lang="ts">
-	import * as Table from '$lib/components/ui/table';
 	import type { Issue, Project } from '$lib/types';
-	import { Badge } from '$lib/components/ui/badge';
 	import { t } from 'svelte-i18n';
+	import { UserPlus } from '@lucide/svelte';
 
 	let {
 		issues = [],
@@ -14,8 +13,8 @@
 		onIssueSelect?: (issueId: number) => void;
 	} = $props();
 
-	function getProjectName(id: number) {
-		return projects.find((p: Project) => p.id === id)?.name || id;
+	function getProjectName(id: number): string {
+		return projects.find((p: Project) => p.id === id)?.name || `Project ${id}`;
 	}
 
 	function handleRowClick(issueId: number) {
@@ -23,53 +22,120 @@
 			onIssueSelect(issueId);
 		}
 	}
+
+	function getInitials(name: string): string {
+		return name
+			.split(' ')
+			.filter((n) => n.length > 0)
+			.map((n) => n[0])
+			.join('')
+			.toUpperCase()
+			.slice(0, 2);
+	}
 </script>
 
-<div class="rounded-md border">
-	<Table.Root>
-		<Table.Header>
-			<Table.Row>
-				<Table.Head>{$t('table.subject')}</Table.Head>
-				<Table.Head>{$t('table.status')}</Table.Head>
-				<Table.Head>{$t('table.project')}</Table.Head>
-				<Table.Head>{$t('table.assignedTo')}</Table.Head>
-			</Table.Row>
-		</Table.Header>
-		<Table.Body>
-			{#if issues.length === 0}
-				<Table.Row>
-					<Table.Cell colspan={4} class="h-24 text-center">
-						{$t('dashboard.noIssues')}
-					</Table.Cell>
-				</Table.Row>
-			{:else}
-				{#each issues as issue (issue.id)}
-					<Table.Row
-						class="hover:bg-muted/50 focus:ring-ring cursor-pointer transition-colors focus:ring-2 focus:outline-none"
-						role="button"
-						tabindex={0}
-						onclick={() => handleRowClick(issue.id)}
-						onkeydown={(e) => {
-							if (e.key === 'Enter' || e.key === ' ') {
-								e.preventDefault();
-								handleRowClick(issue.id);
-							}
-						}}
+<table class="w-full border-collapse text-left">
+	<thead class="sticky top-0 z-10 bg-[#111821]">
+		<tr>
+			<th
+				class="w-24 border-b border-[#243347] px-2 py-3 text-xs font-semibold tracking-wider text-[#93a9c8] uppercase"
+			>
+				{$t('table.issue')}
+			</th>
+			<th
+				class="border-b border-[#243347] px-2 py-3 text-xs font-semibold tracking-wider text-[#93a9c8] uppercase"
+			>
+				{$t('table.subject')}
+			</th>
+			<th
+				class="border-b border-[#243347] px-2 py-3 text-xs font-semibold tracking-wider text-[#93a9c8] uppercase"
+			>
+				{$t('table.status')}
+			</th>
+			<th
+				class="border-b border-[#243347] px-2 py-3 text-xs font-semibold tracking-wider text-[#93a9c8] uppercase"
+			>
+				{$t('table.project')}
+			</th>
+			<th
+				class="border-b border-[#243347] px-2 py-3 text-xs font-semibold tracking-wider text-[#93a9c8] uppercase"
+			>
+				{$t('table.assignedTo')}
+			</th>
+		</tr>
+	</thead>
+	<tbody class="text-sm">
+		{#if issues.length === 0}
+			<tr>
+				<td colspan="5" class="h-24 text-center text-[#93a9c8]">
+					{$t('dashboard.noIssues')}
+				</td>
+			</tr>
+		{:else}
+			{#each issues as issue (issue.id)}
+				<tr
+					class="table-row-hover group cursor-pointer border-b border-[#243347]/50 transition-colors"
+					role="button"
+					tabindex={0}
+					onclick={() => handleRowClick(issue.id)}
+					onkeydown={(e) => {
+						if (e.key === 'Enter' || e.key === ' ') {
+							e.preventDefault();
+							handleRowClick(issue.id);
+						}
+					}}
+				>
+					<td class="px-2 py-2.5 font-mono text-xs text-[#93a9c8]">
+						#{issue.id}
+					</td>
+					<td
+						class="px-2 py-2.5 font-medium text-white transition-colors group-hover:text-[#196ee6]"
 					>
-						<Table.Cell class="font-medium">{issue.subject}</Table.Cell>
-						<Table.Cell>
-							<Badge
-								variant="outline"
-								style="border-color: {issue.status_color}; color: {issue.status_color}"
-							>
+						{issue.subject}
+					</td>
+					<td class="px-2 py-2.5">
+						<div
+							class="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5"
+							style="border-color: {issue.status_color}20; background-color: {issue.status_color}10;"
+						>
+							<span class="size-1.5 rounded-full" style="background-color: {issue.status_color};"
+							></span>
+							<span class="text-xs font-medium" style="color: {issue.status_color};">
 								{issue.status_name || issue.status}
-							</Badge>
-						</Table.Cell>
-						<Table.Cell>{getProjectName(issue.project)}</Table.Cell>
-						<Table.Cell>{issue.assigned_to_name || $t('table.unassigned')}</Table.Cell>
-					</Table.Row>
-				{/each}
-			{/if}
-		</Table.Body>
-	</Table.Root>
-</div>
+							</span>
+						</div>
+					</td>
+					<td class="px-2 py-2.5">
+						<div class="flex items-center gap-1.5">
+							<span class="text-xs text-[#93a9c8]">{getProjectName(issue.project)}</span>
+						</div>
+					</td>
+					<td class="px-2 py-2.5">
+						{#if issue.assigned_to_name}
+							<div class="flex items-center gap-2">
+								{#if issue.assigned_to_photo}
+									<div
+										class="size-6 rounded-full bg-cover bg-center bg-no-repeat ring-1 ring-[#243347]"
+										style="background-image: url({issue.assigned_to_photo});"
+									></div>
+								{:else}
+									<div
+										class="flex size-6 items-center justify-center rounded-full bg-[#196ee6] text-[10px] font-medium text-white ring-1 ring-[#243347]"
+									>
+										{getInitials(issue.assigned_to_name)}
+									</div>
+								{/if}
+							</div>
+						{:else}
+							<div
+								class="flex size-6 items-center justify-center rounded-full border border-dashed border-[#93a9c8] bg-[#243347]"
+							>
+								<UserPlus class="h-3.5 w-3.5 text-[#93a9c8]" />
+							</div>
+						{/if}
+					</td>
+				</tr>
+			{/each}
+		{/if}
+	</tbody>
+</table>

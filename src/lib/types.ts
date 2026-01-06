@@ -44,6 +44,7 @@ export interface FilterObject {
 	project_ids?: number[];
 	status_ids?: number[];
 	assignee_ids?: number[];
+	project_exclude?: boolean;
 	status_exclude?: boolean;
 	assignee_exclude?: boolean;
 }
