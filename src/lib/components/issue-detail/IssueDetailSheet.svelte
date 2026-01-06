@@ -10,20 +10,37 @@
 		CMD_SAVE_LOCAL_DRAFT,
 		CMD_GET_LOCAL_DRAFT,
 		CMD_DELETE_LOCAL_DRAFT,
-		CMD_COMMIT_ISSUE_DESCRIPTION
+		CMD_COMMIT_ISSUE_DESCRIPTION,
+		CMD_CHANGE_ISSUE_PRIORITY,
+		CMD_CHANGE_ISSUE_SEVERITY,
+		CMD_CHANGE_ISSUE_TYPE,
+		CMD_UPDATE_ISSUE_TAGS,
+		CMD_UPLOAD_ISSUE_ATTACHMENT,
+		CMD_DELETE_ISSUE_ATTACHMENT
 	} from '$lib/commands.svelte';
-	import type { IssueDetail, HistoryEntry, IssueStatus, ProjectMetadata, Member } from '$lib/types';
+	import type {
+		IssueDetail,
+		HistoryEntry,
+		IssueStatus,
+		ProjectMetadata,
+		Member,
+		Priority,
+		Severity,
+		IssueType,
+		TagColor,
+		Tag,
+		Attachment
+	} from '$lib/types';
 	import * as Sheet from '$lib/components/ui/sheet';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { t } from 'svelte-i18n';
 	import { toast } from 'svelte-sonner';
-	import { Paperclip, MessageSquare, RefreshCw, Edit3, X, Save, Loader2 } from '@lucide/svelte';
-	import IssueMetadata from './IssueMetadata.svelte';
-	import TagList from './TagList.svelte';
-	import AttachmentList from './AttachmentList.svelte';
+	import { MessageSquare, Edit3, X, Save, Loader2, ChevronRight } from '@lucide/svelte';
 	import CommentList from './CommentList.svelte';
+	import StatusChip from './StatusChip.svelte';
+	import IssueMetadataSidebar from './IssueMetadataSidebar.svelte';
 	import { setPendingCommit } from '$lib/stores/pendingClose';
 
 	let {
@@ -40,15 +57,23 @@
 	let history = $state<HistoryEntry[]>([]);
 	let statuses = $state<IssueStatus[]>([]);
 	let members = $state<Member[]>([]);
+	let priorities = $state<Priority[]>([]);
+	let severities = $state<Severity[]>([]);
+	let issueTypes = $state<IssueType[]>([]);
+	let tagsColors = $state<TagColor[]>([]);
 	let loading = $state(false);
 	let statusUpdating = $state(false);
 	let assigneeUpdating = $state(false);
+	let priorityUpdating = $state(false);
+	let severityUpdating = $state(false);
+	let typeUpdating = $state(false);
+	let tagsUpdating = $state(false);
+	let attachmentUploading = $state(false);
 	let commentSubmitting = $state(false);
 	let commentText = $state('');
 	let error = $state<string | null>(null);
 	let hasConflict = $state(false);
 
-	// Description editing state
 	let isEditingDescription = $state(false);
 	let descriptionDraft = $state('');
 	let descriptionSaving = $state(false);
@@ -56,39 +81,49 @@
 	let draftSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 	const DRAFT_DEBOUNCE_MS = 2000;
 
-	// Watch for issueId changes to load data
+	type SaveStatus = 'saved' | 'saving' | 'collision';
+	let saveStatus = $derived<SaveStatus>(
+		hasConflict
+			? 'collision'
+			: statusUpdating ||
+				  assigneeUpdating ||
+				  priorityUpdating ||
+				  severityUpdating ||
+				  typeUpdating ||
+				  tagsUpdating ||
+				  attachmentUploading ||
+				  descriptionSaving ||
+				  commentSubmitting
+				? 'saving'
+				: 'saved'
+	);
+
 	$effect(() => {
 		if (issueId && open) {
 			loadIssueData(issueId);
 		}
 	});
 
-	// Clear comment text and reset description edit state when issue changes
 	$effect(() => {
 		if (issueId) {
 			commentText = '';
 			isEditingDescription = false;
 			descriptionDraft = '';
 			hasDraft = false;
-			// Check for existing draft
 			checkForDraft(issueId);
 		}
 	});
 
-	// Register/unregister pending commit callback for graceful shutdown
 	$effect(() => {
 		if (hasDraft && issueId) {
-			// Register our commit function for app close handling
 			setPendingCommit(async () => {
 				return await tryCommitDescriptionForClose();
 			});
 		} else {
-			// No pending draft, clear the callback
 			setPendingCommit(null);
 		}
 
 		return () => {
-			// Clean up when effect re-runs or component unmounts
 			setPendingCommit(null);
 		};
 	});
@@ -100,10 +135,13 @@
 		history = [];
 		statuses = [];
 		members = [];
+		priorities = [];
+		severities = [];
+		issueTypes = [];
+		tagsColors = [];
 		hasConflict = false;
 
 		try {
-			// Fetch issue detail and history in parallel
 			const [issueResult, historyResult] = await Promise.all([
 				invoke<IssueDetail>(CMD_GET_ISSUE_DETAIL, { issueId: id }),
 				invoke<HistoryEntry[]>(CMD_GET_ISSUE_HISTORY, { issueId: id })
@@ -112,7 +150,6 @@
 			issue = issueResult;
 			history = historyResult;
 
-			// Now fetch project metadata for this issue's project
 			if (issue.project_id) {
 				try {
 					const metadata = await invoke<Record<number, ProjectMetadata>>(CMD_GET_PROJECT_METADATA, {
@@ -121,15 +158,17 @@
 					if (metadata[issue.project_id]) {
 						statuses = metadata[issue.project_id].statuses;
 						members = metadata[issue.project_id].members;
+						priorities = metadata[issue.project_id].priorities || [];
+						severities = metadata[issue.project_id].severities || [];
+						issueTypes = metadata[issue.project_id].issue_types || [];
+						tagsColors = metadata[issue.project_id].tags_colors || [];
 					}
 				} catch (metaErr) {
 					console.warn('Failed to load project metadata:', metaErr);
-					// Don't block the UI, just won't have status dropdown
 				}
 			}
 		} catch (e) {
 			console.error('Failed to load issue:', e);
-			// Better error serialization
 			if (typeof e === 'string') {
 				error = e;
 			} else if (e instanceof Error) {
@@ -166,12 +205,7 @@
 	}
 
 	async function handleStatusChange(newStatusId: number) {
-		if (!issue) {
-			return;
-		}
-
-		// Don't do anything if selecting the current status
-		if (newStatusId === issue.status_id) {
+		if (!issue || newStatusId === issue.status_id) {
 			return;
 		}
 
@@ -190,14 +224,12 @@
 			toast.success(
 				$t('issueDetail.statusUpdated') || `Status updated to ${newStatus?.name || 'new status'}`
 			);
-
-			if (onIssueUpdated) {
-				onIssueUpdated();
-			}
+			await reloadHistory();
+			onIssueUpdated?.();
 		} catch (e) {
 			console.error('Failed to update status:', e);
 			if (isVersionConflict(e)) {
-				handleVersionConflict(e);
+				handleVersionConflict();
 			} else {
 				toast.error($t('issueDetail.statusUpdateError') || 'Failed to update status');
 			}
@@ -207,12 +239,7 @@
 	}
 
 	async function handleAssigneeChange(newAssigneeId: number | null) {
-		if (!issue) {
-			return;
-		}
-
-		// Don't do anything if selecting the current assignee
-		if (newAssigneeId === issue.assigned_to_id) {
+		if (!issue || newAssigneeId === issue.assigned_to_id) {
 			return;
 		}
 
@@ -230,19 +257,188 @@
 			const newAssignee = members.find((m) => m.user_id === newAssigneeId);
 			const assigneeName = newAssignee?.full_name || 'Unassigned';
 			toast.success($t('issueDetail.assigneeUpdated') || `Assigned to ${assigneeName}`);
-
-			if (onIssueUpdated) {
-				onIssueUpdated();
-			}
+			await reloadHistory();
+			onIssueUpdated?.();
 		} catch (e) {
 			console.error('Failed to update assignee:', e);
 			if (isVersionConflict(e)) {
-				handleVersionConflict(e);
+				handleVersionConflict();
 			} else {
 				toast.error($t('issueDetail.assigneeUpdateError') || 'Failed to update assignee');
 			}
 		} finally {
 			assigneeUpdating = false;
+		}
+	}
+
+	async function handlePriorityChange(newPriorityId: number) {
+		if (!issue || newPriorityId === issue.priority_id) {
+			return;
+		}
+
+		priorityUpdating = true;
+		hasConflict = false;
+
+		try {
+			const updatedIssue = await invoke<IssueDetail>(CMD_CHANGE_ISSUE_PRIORITY, {
+				issueId: issue.id,
+				priorityId: newPriorityId,
+				version: issue.version
+			});
+
+			issue = updatedIssue;
+			toast.success($t('issueDetail.priorityUpdated') || 'Priority updated');
+			await reloadHistory();
+			onIssueUpdated?.();
+		} catch (e) {
+			console.error('Failed to update priority:', e);
+			if (isVersionConflict(e)) {
+				handleVersionConflict();
+			} else {
+				toast.error($t('issueDetail.priorityUpdateError') || 'Failed to update priority');
+			}
+		} finally {
+			priorityUpdating = false;
+		}
+	}
+
+	async function handleSeverityChange(newSeverityId: number) {
+		if (!issue || newSeverityId === issue.severity_id) {
+			return;
+		}
+
+		severityUpdating = true;
+		hasConflict = false;
+
+		try {
+			const updatedIssue = await invoke<IssueDetail>(CMD_CHANGE_ISSUE_SEVERITY, {
+				issueId: issue.id,
+				severityId: newSeverityId,
+				version: issue.version
+			});
+
+			issue = updatedIssue;
+			toast.success($t('issueDetail.severityUpdated') || 'Severity updated');
+			await reloadHistory();
+			onIssueUpdated?.();
+		} catch (e) {
+			console.error('Failed to update severity:', e);
+			if (isVersionConflict(e)) {
+				handleVersionConflict();
+			} else {
+				toast.error($t('issueDetail.severityUpdateError') || 'Failed to update severity');
+			}
+		} finally {
+			severityUpdating = false;
+		}
+	}
+
+	async function handleTypeChange(newTypeId: number) {
+		if (!issue || newTypeId === issue.type_id) {
+			return;
+		}
+
+		typeUpdating = true;
+		hasConflict = false;
+
+		try {
+			const updatedIssue = await invoke<IssueDetail>(CMD_CHANGE_ISSUE_TYPE, {
+				issueId: issue.id,
+				typeId: newTypeId,
+				version: issue.version
+			});
+
+			issue = updatedIssue;
+			toast.success($t('issueDetail.typeUpdated') || 'Type updated');
+			await reloadHistory();
+			onIssueUpdated?.();
+		} catch (e) {
+			console.error('Failed to update type:', e);
+			if (isVersionConflict(e)) {
+				handleVersionConflict();
+			} else {
+				toast.error($t('issueDetail.typeUpdateError') || 'Failed to update type');
+			}
+		} finally {
+			typeUpdating = false;
+		}
+	}
+
+	async function handleTagsChange(newTags: Tag[]) {
+		if (!issue) {
+			return;
+		}
+
+		tagsUpdating = true;
+		hasConflict = false;
+
+		try {
+			const tagsPayload = newTags.map((t) => [t.name, t.color ?? null] as [string, string | null]);
+			const updatedIssue = await invoke<IssueDetail>(CMD_UPDATE_ISSUE_TAGS, {
+				issueId: issue.id,
+				tags: tagsPayload,
+				version: issue.version
+			});
+
+			issue = updatedIssue;
+			toast.success($t('issueDetail.tagsUpdated') || 'Labels updated');
+			await reloadHistory();
+			onIssueUpdated?.();
+		} catch (e) {
+			console.error('Failed to update tags:', e);
+			if (isVersionConflict(e)) {
+				handleVersionConflict();
+			} else {
+				toast.error($t('issueDetail.tagsUpdateError') || 'Failed to update labels');
+			}
+		} finally {
+			tagsUpdating = false;
+		}
+	}
+
+	async function handleAttachmentUpload(fileName: string, fileData: Uint8Array) {
+		if (!issue) {
+			return;
+		}
+
+		attachmentUploading = true;
+		hasConflict = false;
+
+		try {
+			const newAttachment = await invoke<Attachment>(CMD_UPLOAD_ISSUE_ATTACHMENT, {
+				projectId: issue.project_id,
+				issueId: issue.id,
+				fileName,
+				fileData: Array.from(fileData)
+			});
+
+			issue = { ...issue, attachments: [...issue.attachments, newAttachment] };
+			toast.success($t('issueDetail.attachmentUploaded') || 'Attachment uploaded');
+			onIssueUpdated?.();
+		} catch (e) {
+			console.error('Failed to upload attachment:', e);
+			toast.error($t('issueDetail.attachmentUploadError') || 'Failed to upload attachment');
+		} finally {
+			attachmentUploading = false;
+		}
+	}
+
+	async function handleAttachmentDelete(attachmentId: number) {
+		if (!issue) {
+			return;
+		}
+
+		try {
+			await invoke(CMD_DELETE_ISSUE_ATTACHMENT, { attachmentId });
+			issue = {
+				...issue,
+				attachments: issue.attachments.filter((a) => a.id !== attachmentId)
+			};
+			toast.success($t('issueDetail.attachmentDeleted') || 'Attachment deleted');
+			onIssueUpdated?.();
+		} catch (e) {
+			console.error('Failed to delete attachment:', e);
+			toast.error($t('issueDetail.attachmentDeleteError') || 'Failed to delete attachment');
 		}
 	}
 
@@ -265,14 +461,11 @@
 			await reloadHistory();
 			commentText = '';
 			toast.success($t('issueDetail.commentAdded') || 'Comment added successfully');
-
-			if (onIssueUpdated) {
-				onIssueUpdated();
-			}
+			onIssueUpdated?.();
 		} catch (e) {
 			console.error('Failed to add comment:', e);
 			if (isVersionConflict(e)) {
-				handleVersionConflict(e);
+				handleVersionConflict();
 			} else {
 				toast.error($t('issueDetail.commentError') || 'Failed to add comment');
 			}
@@ -290,7 +483,6 @@
 			return;
 		}
 
-		// If user has unsaved comment, confirm before reloading
 		if (commentText && commentText.trim()) {
 			const confirmed = confirm(
 				$t('issueDetail.unsavedComment') || 'You have an unsaved comment. Reload anyway?'
@@ -301,16 +493,11 @@
 		}
 
 		commentText = '';
+		hasConflict = false;
 		loadIssueData(issueId);
 	}
 
-	// Filter history to only show entries with comments
-	// Note: Comments added via PATCH may have entry_type "change" but still contain comment text
 	let comments = $derived(history.filter((h) => h.comment && !h.is_deleted));
-
-	// ============================================================================
-	// Description Editing Functions
-	// ============================================================================
 
 	async function checkForDraft(id: number) {
 		try {
@@ -332,7 +519,6 @@
 			return;
 		}
 		isEditingDescription = true;
-		// Use existing draft if available, otherwise use current description
 		if (!hasDraft) {
 			descriptionDraft = issue.description || '';
 		}
@@ -340,7 +526,6 @@
 
 	async function cancelEditingDescription() {
 		isEditingDescription = false;
-		// Clear the debounce timeout
 		if (draftSaveTimeout) {
 			clearTimeout(draftSaveTimeout);
 			draftSaveTimeout = null;
@@ -388,7 +573,6 @@
 				content: descriptionDraft
 			});
 			hasDraft = true;
-			console.log('Draft saved');
 		} catch (e) {
 			console.error('Failed to save draft:', e);
 		}
@@ -398,24 +582,18 @@
 		await executeCommitDescription();
 	}
 
-	// Version of commitDescription that returns success/failure for app close handling
 	async function tryCommitDescriptionForClose(): Promise<boolean> {
 		if (!issue || !hasDraft) {
-			return true; // Nothing to commit, safe to close
+			return true;
 		}
 		return await executeCommitDescription();
 	}
 
-	/**
-	 * Shared logic for committing the description draft to the server.
-	 * Returns true if successful, false otherwise.
-	 */
 	async function executeCommitDescription(): Promise<boolean> {
 		if (!issue) {
 			return false;
 		}
 
-		// First, save the current draft immediately
 		if (draftSaveTimeout) {
 			clearTimeout(draftSaveTimeout);
 			draftSaveTimeout = null;
@@ -437,16 +615,13 @@
 			descriptionDraft = '';
 
 			toast.success($t('issueDetail.descriptionUpdated') || 'Description updated successfully');
-
-			if (onIssueUpdated) {
-				onIssueUpdated();
-			}
+			onIssueUpdated?.();
 
 			return true;
 		} catch (e) {
 			console.error('Failed to commit description:', e);
 			if (isVersionConflict(e)) {
-				handleVersionConflict(e);
+				handleVersionConflict();
 			} else {
 				toast.error($t('issueDetail.descriptionUpdateError') || 'Failed to update description');
 			}
@@ -456,17 +631,14 @@
 		}
 	}
 
-	/**
-	 * Shared handler for version conflict errors across all update actions.
-	 */
-	function handleVersionConflict(e: unknown) {
+	function handleVersionConflict() {
 		hasConflict = true;
 		toast.error(
 			$t('issueDetail.versionConflict') ||
-				'This issue was modified by someone else. Please reload and try again.',
+				'This issue was modified by someone else. Please refresh and try again.',
 			{
 				action: {
-					label: $t('issueDetail.reload') || 'Reload',
+					label: $t('issueDetail.reload') || 'Refresh',
 					onClick: () => handleReloadWithConfirmation()
 				}
 			}
@@ -476,11 +648,10 @@
 
 <Sheet.Root bind:open>
 	<Sheet.Content
-		class="flex h-full w-full flex-col overflow-hidden sm:max-w-md md:max-w-lg lg:max-w-2xl"
+		class="flex h-full w-full flex-col overflow-hidden sm:max-w-2xl md:max-w-3xl lg:max-w-5xl"
 		side="right"
 	>
 		{#if loading}
-			<!-- Loading State -->
 			<Sheet.Header class="flex-shrink-0 border-b pb-4">
 				<Skeleton class="h-6 w-32" />
 				<Skeleton class="mt-2 h-8 w-full" />
@@ -491,7 +662,6 @@
 				<Skeleton class="h-48 w-full" />
 			</div>
 		{:else if error}
-			<!-- Error State -->
 			<Sheet.Header class="flex-shrink-0 border-b pb-4">
 				<Sheet.Title class="text-destructive">{$t('issueDetail.error')}</Sheet.Title>
 			</Sheet.Header>
@@ -504,181 +674,154 @@
 				</div>
 			</div>
 		{:else if issue}
-			<!-- Issue Detail -->
-			<Sheet.Header class="flex-shrink-0 border-b pb-4">
+			<Sheet.Header class="flex-shrink-0 space-y-3 border-b pb-4">
 				<div class="flex items-center justify-between pr-8">
-					<div class="flex items-center gap-2">
-						<span class="text-muted-foreground font-mono">#{issue.ref_number}</span>
-						<Badge variant={issue.is_closed ? 'secondary' : 'default'} class="text-xs">
+					<div class="flex items-center gap-2 text-sm">
+						<span class="text-muted-foreground">{issue.project_name}</span>
+						<ChevronRight class="text-muted-foreground h-4 w-4" />
+						<span class="font-mono font-medium">#{issue.ref_number}</span>
+						<Badge variant={issue.is_closed ? 'secondary' : 'default'} class="ml-1 text-xs">
 							{issue.is_closed ? '✓ Closed' : '● Open'}
 						</Badge>
 					</div>
-					<Button
-						variant="ghost"
-						size="icon"
-						onclick={handleReload}
-						disabled={loading || statusUpdating}
-						title={$t('issueDetail.reload') || 'Reload'}
-					>
-						<RefreshCw class="h-4 w-4" />
-					</Button>
+					<StatusChip status={saveStatus} onRefresh={handleReload} />
 				</div>
-				<Sheet.Title class="mt-2 text-xl leading-tight font-semibold">
+				<Sheet.Title class="text-xl leading-tight font-semibold">
 					{issue.subject}
 				</Sheet.Title>
 			</Sheet.Header>
 
-			<!-- Conflict Warning -->
-			{#if hasConflict}
-				<div
-					class="bg-destructive/10 text-destructive flex items-center justify-between gap-2 px-6 py-3 text-sm"
-				>
-					<span
-						>{$t('issueDetail.versionConflict') || 'This issue was modified by someone else.'}</span
-					>
-					<Button variant="outline" size="sm" onclick={handleReload}>
-						<RefreshCw class="mr-2 h-3 w-3" />
-						{$t('issueDetail.reload') || 'Reload'}
-					</Button>
-				</div>
-			{/if}
+			<div class="flex min-h-0 flex-1">
+				<div class="flex min-w-0 flex-[7] flex-col border-r">
+					<div class="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
+						<div class="mb-6">
+							<div class="mb-2 flex items-center justify-between">
+								<h3 class="text-sm font-medium">
+									{$t('issueDetail.description') || 'Description'}
+								</h3>
+								{#if !isEditingDescription}
+									<div class="flex items-center gap-2">
+										{#if hasDraft}
+											<Badge variant="secondary" class="text-xs">
+												{$t('issueDetail.draftSaved') || 'Draft saved'}
+											</Badge>
+										{/if}
+										<Button
+											variant="ghost"
+											size="sm"
+											class="h-7 gap-1 text-xs"
+											onclick={startEditingDescription}
+											disabled={loading || statusUpdating}
+										>
+											<Edit3 class="h-3 w-3" />
+											{$t('issueDetail.editDescription') || 'Edit'}
+										</Button>
+									</div>
+								{/if}
+							</div>
 
-			<!-- Scrollable content area -->
-			<div class="flex-1 overflow-y-auto">
-				<div class="space-y-6 p-6">
-					<!-- Metadata Section -->
-					<IssueMetadata
-						{issue}
-						{statuses}
-						{members}
-						{statusUpdating}
-						{assigneeUpdating}
-						onStatusChange={handleStatusChange}
-						onAssigneeChange={handleAssigneeChange}
-					/>
-
-					<!-- Tags -->
-					{#if issue.tags.length > 0}
-						<div>
-							<h3 class="mb-2 text-sm font-medium">Tags</h3>
-							<TagList tags={issue.tags} />
-						</div>
-					{/if}
-
-					<!-- Attachments -->
-					{#if issue.attachments.length > 0}
-						<div>
-							<h3 class="mb-2 flex items-center gap-2 text-sm font-medium">
-								<Paperclip class="h-4 w-4" />
-								Attachments ({issue.attachments.length})
-							</h3>
-							<AttachmentList attachments={issue.attachments} />
-						</div>
-					{/if}
-
-					<!-- Description -->
-					<div>
-						<div class="mb-2 flex items-center justify-between">
-							<h3 class="text-sm font-medium">{$t('issueDetail.description') || 'Description'}</h3>
-							{#if !isEditingDescription}
-								<div class="flex items-center gap-2">
-									{#if hasDraft}
-										<Badge variant="secondary" class="text-xs">
-											{$t('issueDetail.draftSaved') || 'Draft saved'}
-										</Badge>
-									{/if}
-									<Button
-										variant="ghost"
-										size="sm"
-										class="h-7 gap-1 text-xs"
-										onclick={startEditingDescription}
-										disabled={loading || statusUpdating}
-									>
-										<Edit3 class="h-3 w-3" />
-										{$t('issueDetail.editDescription') || 'Edit'}
-									</Button>
+							{#if isEditingDescription}
+								<div class="space-y-3">
+									<textarea
+										value={descriptionDraft}
+										oninput={handleDescriptionInput}
+										disabled={descriptionSaving}
+										class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[150px] w-full resize-y rounded-lg border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+										rows={6}
+										placeholder={$t('issueDetail.noDescription') || 'No description provided'}
+									></textarea>
+									<div class="flex items-center justify-between">
+										<div class="flex gap-2">
+											{#if hasDraft}
+												<Button
+													variant="ghost"
+													size="sm"
+													onclick={discardDraft}
+													disabled={descriptionSaving}
+													class="text-destructive hover:text-destructive"
+												>
+													{$t('issueDetail.discardDraft') || 'Discard draft'}
+												</Button>
+											{/if}
+										</div>
+										<div class="flex gap-2">
+											<Button
+												variant="outline"
+												size="sm"
+												onclick={cancelEditingDescription}
+												disabled={descriptionSaving}
+											>
+												<X class="mr-1 h-3 w-3" />
+												{$t('issueDetail.cancelEdit') || 'Cancel'}
+											</Button>
+											<Button size="sm" onclick={commitDescription} disabled={descriptionSaving}>
+												{#if descriptionSaving}
+													<Loader2 class="mr-1 h-3 w-3 animate-spin" />
+													{$t('issueDetail.savingDescription') || 'Saving...'}
+												{:else}
+													<Save class="mr-1 h-3 w-3" />
+													{$t('issueDetail.saveDescription') || 'Save'}
+												{/if}
+											</Button>
+										</div>
+									</div>
 								</div>
+							{:else if issue.description_html}
+								<div class="prose prose-sm dark:prose-invert bg-muted/30 max-w-none rounded-lg p-4">
+									{@html issue.description_html}
+								</div>
+							{:else if issue.description}
+								<div class="bg-muted/30 rounded-lg p-4 text-sm whitespace-pre-wrap">
+									{issue.description}
+								</div>
+							{:else}
+								<p class="text-muted-foreground text-sm italic">
+									{$t('issueDetail.noDescription') || 'No description provided'}
+								</p>
 							{/if}
 						</div>
 
-						{#if isEditingDescription}
-							<!-- Edit Mode -->
-							<div class="space-y-3">
-								<textarea
-									value={descriptionDraft}
-									oninput={handleDescriptionInput}
-									disabled={descriptionSaving}
-									class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[150px] w-full resize-y rounded-lg border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-									rows={6}
-									placeholder={$t('issueDetail.noDescription') || 'No description provided'}
-								></textarea>
-								<div class="flex items-center justify-between">
-									<div class="flex gap-2">
-										{#if hasDraft}
-											<Button
-												variant="ghost"
-												size="sm"
-												onclick={discardDraft}
-												disabled={descriptionSaving}
-												class="text-destructive hover:text-destructive"
-											>
-												{$t('issueDetail.discardDraft') || 'Discard draft'}
-											</Button>
-										{/if}
-									</div>
-									<div class="flex gap-2">
-										<Button
-											variant="outline"
-											size="sm"
-											onclick={cancelEditingDescription}
-											disabled={descriptionSaving}
-										>
-											<X class="mr-1 h-3 w-3" />
-											{$t('issueDetail.cancelEdit') || 'Cancel'}
-										</Button>
-										<Button size="sm" onclick={commitDescription} disabled={descriptionSaving}>
-											{#if descriptionSaving}
-												<Loader2 class="mr-1 h-3 w-3 animate-spin" />
-												{$t('issueDetail.savingDescription') || 'Saving...'}
-											{:else}
-												<Save class="mr-1 h-3 w-3" />
-												{$t('issueDetail.saveDescription') || 'Save'}
-											{/if}
-										</Button>
-									</div>
-								</div>
-							</div>
-						{:else if issue.description_html}
-							<!-- View Mode: HTML -->
-							<div class="prose prose-sm dark:prose-invert bg-muted/30 max-w-none rounded-lg p-4">
-								{@html issue.description_html}
-							</div>
-						{:else if issue.description}
-							<!-- View Mode: Plain text -->
-							<div class="bg-muted/30 rounded-lg p-4 text-sm whitespace-pre-wrap">
-								{issue.description}
-							</div>
-						{:else}
-							<!-- No description -->
-							<p class="text-muted-foreground text-sm italic">
-								{$t('issueDetail.noDescription') || 'No description provided'}
-							</p>
-						{/if}
+						<div class="flex-1">
+							<h3 class="mb-2 flex items-center gap-2 text-sm font-medium">
+								<MessageSquare class="h-4 w-4" />
+								{$t('issueDetail.comments') || 'Comments'} ({comments.length})
+							</h3>
+							<CommentList
+								{comments}
+								bind:commentText
+								submitting={commentSubmitting}
+								onSubmit={handleAddComment}
+							/>
+						</div>
 					</div>
+				</div>
 
-					<!-- Comments -->
-					<div>
-						<h3 class="mb-2 flex items-center gap-2 text-sm font-medium">
-							<MessageSquare class="h-4 w-4" />
-							Comments ({comments.length})
-						</h3>
-						<CommentList
-							{comments}
-							bind:commentText
-							submitting={commentSubmitting}
-							onSubmit={handleAddComment}
-						/>
-					</div>
+				<div class="flex w-80 flex-shrink-0 flex-col border-l">
+					<IssueMetadataSidebar
+						{issue}
+						{statuses}
+						{members}
+						{priorities}
+						{severities}
+						{issueTypes}
+						{tagsColors}
+						{history}
+						{statusUpdating}
+						{assigneeUpdating}
+						{priorityUpdating}
+						{severityUpdating}
+						{typeUpdating}
+						{tagsUpdating}
+						{attachmentUploading}
+						onStatusChange={handleStatusChange}
+						onAssigneeChange={handleAssigneeChange}
+						onPriorityChange={handlePriorityChange}
+						onSeverityChange={handleSeverityChange}
+						onTypeChange={handleTypeChange}
+						onTagsChange={handleTagsChange}
+						onAttachmentUpload={handleAttachmentUpload}
+						onAttachmentDelete={handleAttachmentDelete}
+					/>
 				</div>
 			</div>
 		{/if}

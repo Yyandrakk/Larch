@@ -55,7 +55,8 @@
 		"retry": "Retry",
 		"close": "Close",
 		"cancel": "Cancel",
-		"saving": "Saving..."
+		"saving": "Saving...",
+		"add": "Add"
 	},
 	"dashboard": {
 		"title": "Dashboard",
@@ -177,6 +178,35 @@
 		"assigneeUpdated": "Assignee updated successfully",
 		"assigneeUpdateError": "Failed to update assignee",
 		"draftSaved": "Draft saved",
-		"discardDraft": "Discard draft"
+		"discardDraft": "Discard draft",
+		"saved": "Saved",
+		"saving": "Saving...",
+		"collision": "Collision",
+		"refresh": "Refresh",
+		"priorityUpdated": "Priority updated",
+		"priorityUpdateError": "Failed to update priority",
+		"severityUpdated": "Severity updated",
+		"severityUpdateError": "Failed to update severity",
+		"typeUpdated": "Type updated",
+		"typeUpdateError": "Failed to update type",
+		"tagsUpdated": "Labels updated",
+		"tagsUpdateError": "Failed to update labels",
+		"labels": "Labels",
+		"addLabel": "Add",
+		"newLabelPlaceholder": "New label...",
+		"existingLabels": "Existing labels",
+		"noLabels": "No labels",
+		"upload": "Upload",
+		"uploading": "Uploading...",
+		"download": "Download",
+		"delete": "Delete",
+		"attachmentUploaded": "Attachment uploaded",
+		"attachmentUploadError": "Failed to upload attachment",
+		"attachmentDeleted": "Attachment deleted",
+		"attachmentDeleteError": "Failed to delete attachment",
+		"activity": "Activity",
+		"noActivity": "No activity yet",
+		"created": "Created",
+		"updated": "Updated"
 	}
 }

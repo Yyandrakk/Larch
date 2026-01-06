@@ -68,6 +68,12 @@ pub fn run() {
             commands::draft_commands::delete_local_draft,
             commands::issue_commands::commit_issue_description,
             commands::issue_commands::change_issue_assignee,
+            commands::issue_commands::change_issue_priority,
+            commands::issue_commands::change_issue_severity,
+            commands::issue_commands::change_issue_type,
+            commands::issue_commands::update_issue_tags,
+            commands::issue_commands::upload_issue_attachment,
+            commands::issue_commands::delete_issue_attachment,
             commands::app_commands::force_close_app
         ])
         .on_window_event(|window, event| {

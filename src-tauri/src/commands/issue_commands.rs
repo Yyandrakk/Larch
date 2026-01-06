@@ -65,6 +65,10 @@ pub async fn change_issue_status(
         comment: None,
         description: None,
         assigned_to: None,
+        priority: None,
+        severity: None,
+        type_: None,
+        tags: None,
     };
 
     // Call the API - will return VersionConflict on 412
@@ -94,6 +98,10 @@ pub async fn add_issue_comment(
         comment: Some(comment),
         description: None,
         assigned_to: None,
+        priority: None,
+        severity: None,
+        type_: None,
+        tags: None,
     };
 
     // Call the API - will return VersionConflict on 412
@@ -139,6 +147,10 @@ pub async fn commit_issue_description(
         comment: None,
         description: Some(description),
         assigned_to: None,
+        priority: None,
+        severity: None,
+        type_: None,
+        tags: None,
     };
 
     // Call the API - will return VersionConflict on 412
@@ -174,6 +186,10 @@ pub async fn change_issue_assignee(
         comment: None,
         description: None,
         assigned_to: Some(assignee_id),
+        priority: None,
+        severity: None,
+        type_: None,
+        tags: None,
     };
 
     // Call the API - will return VersionConflict on 412
@@ -183,4 +199,148 @@ pub async fn change_issue_assignee(
     let issue_detail = IssueDetail::from_dto(updated_issue_dto);
 
     Ok(issue_detail)
+}
+
+#[tauri::command]
+pub async fn change_issue_priority(
+    client: tauri::State<'_, TaigaClient>,
+    issue_id: i64,
+    priority_id: i64,
+    version: i64,
+) -> Result<IssueDetail> {
+    let token = credentials::get_api_token()?;
+
+    let request = taiga_client::models::PatchIssueRequest {
+        version,
+        status: None,
+        comment: None,
+        description: None,
+        assigned_to: None,
+        priority: Some(priority_id),
+        severity: None,
+        type_: None,
+        tags: None,
+    };
+
+    let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+    let issue_detail = IssueDetail::from_dto(updated_issue_dto);
+
+    Ok(issue_detail)
+}
+
+#[tauri::command]
+pub async fn change_issue_severity(
+    client: tauri::State<'_, TaigaClient>,
+    issue_id: i64,
+    severity_id: i64,
+    version: i64,
+) -> Result<IssueDetail> {
+    let token = credentials::get_api_token()?;
+
+    let request = taiga_client::models::PatchIssueRequest {
+        version,
+        status: None,
+        comment: None,
+        description: None,
+        assigned_to: None,
+        priority: None,
+        severity: Some(severity_id),
+        type_: None,
+        tags: None,
+    };
+
+    let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+    let issue_detail = IssueDetail::from_dto(updated_issue_dto);
+
+    Ok(issue_detail)
+}
+
+#[tauri::command]
+pub async fn change_issue_type(
+    client: tauri::State<'_, TaigaClient>,
+    issue_id: i64,
+    type_id: i64,
+    version: i64,
+) -> Result<IssueDetail> {
+    let token = credentials::get_api_token()?;
+
+    let request = taiga_client::models::PatchIssueRequest {
+        version,
+        status: None,
+        comment: None,
+        description: None,
+        assigned_to: None,
+        priority: None,
+        severity: None,
+        type_: Some(type_id),
+        tags: None,
+    };
+
+    let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+    let issue_detail = IssueDetail::from_dto(updated_issue_dto);
+
+    Ok(issue_detail)
+}
+
+#[tauri::command]
+pub async fn update_issue_tags(
+    client: tauri::State<'_, TaigaClient>,
+    issue_id: i64,
+    tags: Vec<(String, Option<String>)>,
+    version: i64,
+) -> Result<IssueDetail> {
+    let token = credentials::get_api_token()?;
+
+    let tags_json: Vec<serde_json::Value> = tags
+        .into_iter()
+        .map(|(name, color)| serde_json::json!([name, color]))
+        .collect();
+
+    let request = taiga_client::models::PatchIssueRequest {
+        version,
+        status: None,
+        comment: None,
+        description: None,
+        assigned_to: None,
+        priority: None,
+        severity: None,
+        type_: None,
+        tags: Some(serde_json::Value::Array(tags_json)),
+    };
+
+    let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+    let issue_detail = IssueDetail::from_dto(updated_issue_dto);
+
+    Ok(issue_detail)
+}
+
+#[tauri::command]
+pub async fn upload_issue_attachment(
+    client: tauri::State<'_, TaigaClient>,
+    project_id: i64,
+    issue_id: i64,
+    file_name: String,
+    file_data: Vec<u8>,
+) -> Result<crate::domain::issue_detail::Attachment> {
+    let token = credentials::get_api_token()?;
+
+    let attachment_dto = client
+        .upload_issue_attachment(&token, project_id, issue_id, file_name, file_data)
+        .await?;
+
+    Ok((&attachment_dto).into())
+}
+
+#[tauri::command]
+pub async fn delete_issue_attachment(
+    client: tauri::State<'_, TaigaClient>,
+    attachment_id: i64,
+) -> Result<()> {
+    let token = credentials::get_api_token()?;
+
+    client
+        .delete_issue_attachment(&token, attachment_id)
+        .await?;
+
+    Ok(())
 }
