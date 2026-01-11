@@ -8,15 +8,24 @@
 	import ProjectConfigurationScreen from '$lib/screens/ProjectConfigurationScreen.svelte';
 	import DashboardScreen from '$lib/screens/DashboardScreen.svelte';
 	import { AppShell } from '$lib/components/layout';
-	import { Toaster } from 'svelte-sonner';
-	import { CMD_FORCE_CLOSE_APP } from '$lib/commands.svelte';
+	import { Toaster, toast } from 'svelte-sonner';
+	import { CMD_FORCE_CLOSE_APP, CMD_GET_ME } from '$lib/commands.svelte';
 	import { hasPendingCommit, tryCommitPending } from '$lib/stores/pendingClose';
+	import { setCurrentUser, clearCurrentUser } from '$lib/stores/user.svelte';
+	import { setSessionExpiredHandler } from '$lib/services/api';
+	import type { User } from '$lib/types';
 
 	type Screen = 'login' | 'projects' | 'dashboard';
 	let currentScreen = $state<Screen>('login');
 	let isCheckingAuth = $state(true);
 
 	onMount(() => {
+		setSessionExpiredHandler(() => {
+			clearCurrentUser();
+			currentScreen = 'login';
+			toast.error('Session expired. Please log in again.');
+		});
+
 		const unlistenPromise = listen('app-close-requested', async () => {
 			try {
 				if (hasPendingCommit()) {
@@ -37,7 +46,8 @@
 				const hasToken = await invoke<boolean>('has_api_token');
 				if (hasToken) {
 					try {
-						await invoke('get_me');
+						const user = await invoke<User>(CMD_GET_ME);
+						setCurrentUser(user);
 						const selectedIds = await invoke<number[]>('get_selected_projects');
 						if (selectedIds.length > 0) {
 							currentScreen = 'dashboard';
@@ -46,6 +56,7 @@
 						}
 					} catch (e) {
 						console.error('Token validation failed:', e);
+						clearCurrentUser();
 						currentScreen = 'login';
 					}
 				} else {
@@ -77,6 +88,7 @@
 	}
 
 	function handleLogout() {
+		clearCurrentUser();
 		currentScreen = 'login';
 	}
 </script>

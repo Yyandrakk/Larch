@@ -4,13 +4,24 @@
 	import { ChevronDown, LogOut, Bell } from '@lucide/svelte';
 	import { CMD_LOGOUT } from '$lib/commands.svelte';
 	import { toast } from 'svelte-sonner';
+	import {
+		getUserDisplayName,
+		getUserInitials,
+		getUserPhoto,
+		clearCurrentUser
+	} from '$lib/stores/user.svelte';
 
 	let { onLogout }: { onLogout: () => void } = $props();
 	let dropdownOpen = $state(false);
 
+	let displayName = $derived(getUserDisplayName());
+	let initials = $derived(getUserInitials());
+	let photoUrl = $derived(getUserPhoto());
+
 	async function handleLogout() {
 		try {
 			await invoke(CMD_LOGOUT);
+			clearCurrentUser();
 			toast.success($t('header.loggedOut'));
 			onLogout();
 		} catch (error) {
@@ -50,12 +61,20 @@
 				onclick={toggleDropdown}
 				class="flex items-center gap-2 rounded-full py-1 pr-2 pl-1 transition-colors hover:bg-[#243347]"
 			>
-				<div
-					class="flex h-7 w-7 items-center justify-center rounded-full border border-[#243347] bg-[#196ee6] text-xs font-medium text-white"
-				>
-					U
-				</div>
-				<span class="hidden text-sm font-medium text-white md:block">{$t('header.user')}</span>
+				{#if photoUrl}
+					<img
+						src={photoUrl}
+						alt={displayName}
+						class="h-7 w-7 rounded-full border border-[#243347] object-cover"
+					/>
+				{:else}
+					<div
+						class="flex h-7 w-7 items-center justify-center rounded-full border border-[#243347] bg-[#196ee6] text-xs font-medium text-white"
+					>
+						{initials}
+					</div>
+				{/if}
+				<span class="hidden text-sm font-medium text-white md:block">{displayName}</span>
 				<ChevronDown class="h-4 w-4 text-[#93a9c8]" />
 			</button>
 

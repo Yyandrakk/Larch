@@ -19,6 +19,7 @@ just test-rust        # Run Rust tests only
 just format           # Format all code
 just format-rust      # Format Rust code only
 just format-svelte    # Format Svelte/TS code only
+just bump <version>   # Bump version (e.g., just bump 2.0.0-beta.1)
 ```
 
 ### Running Individual Tests (Rust)

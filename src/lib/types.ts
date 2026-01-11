@@ -11,12 +11,25 @@ export interface Issue {
 	assigned_to_photo?: string;
 }
 
+export interface User {
+	id: number;
+	username: string;
+	full_name: string;
+	email: string;
+	photo: string | null;
+	big_photo: string | null;
+	gravatar_id: string;
+	is_active: boolean;
+}
+
 export interface Project {
 	id: number;
 	name: string;
 	slug: string;
 	description: string;
 	owner: number;
+	created_date: string | null;
+	modified_date: string | null;
 }
 
 export interface IssueStatus {

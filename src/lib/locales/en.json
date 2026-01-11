@@ -10,7 +10,8 @@
 	"header": {
 		"user": "User",
 		"logout": "Log Out",
-		"loggedOut": "Logged out successfully"
+		"loggedOut": "Logged out successfully",
+		"sessionExpired": "Session expired. Please log in again."
 	},
 	"login": {
 		"welcomeBack": "Welcome back",
@@ -69,7 +70,9 @@
 		"loaded": "Loaded issues:",
 		"showing": "Showing",
 		"of": "of",
-		"issues": "issues"
+		"issues": "issues",
+		"lastModified": "Last Modified",
+		"noDate": "No date"
 	},
 	"table": {
 		"issue": "Issue",

@@ -13,7 +13,8 @@
 	} from '$lib/types';
 	import * as Avatar from '$lib/components/ui/avatar';
 	import * as Select from '$lib/components/ui/select';
-	import { User, Calendar, Clock, AlertTriangle, Loader2 } from '@lucide/svelte';
+	import { Input } from '$lib/components/ui/input';
+	import { User, Calendar, Clock, AlertTriangle, Loader2, Search } from '@lucide/svelte';
 	import { t } from 'svelte-i18n';
 	import PrioritySelector from './PrioritySelector.svelte';
 	import SeveritySelector from './SeveritySelector.svelte';
@@ -79,6 +80,14 @@
 		onAttachmentDelete?: (attachmentId: number) => void;
 		onRetryLoadAttachments?: () => void;
 	} = $props();
+
+	let assigneeSearchQuery = $state('');
+
+	let filteredMembers = $derived.by(() => {
+		if (!assigneeSearchQuery.trim()) return members;
+		const query = assigneeSearchQuery.toLowerCase().trim();
+		return members.filter((m) => m.full_name?.toLowerCase().includes(query));
+	});
 
 	function formatDate(dateStr: string): string {
 		const date = new Date(dateStr);
@@ -175,6 +184,17 @@
 				{$t('issueDetail.assignee') || 'Assignee'}
 			</span>
 			{#if canEditAssignee}
+				<div class="relative mb-2">
+					<Search
+						class="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2"
+					/>
+					<Input
+						type="text"
+						placeholder={$t('filters.searchPeople') || 'Search people...'}
+						bind:value={assigneeSearchQuery}
+						class="h-8 pl-8 text-sm"
+					/>
+				</div>
 				{#key issue.assigned_to_id}
 					<Select.Root
 						type="single"
@@ -199,14 +219,18 @@
 									<span class="truncate">{issue.assigned_to_name}</span>
 								</div>
 							{:else}
-								<span class="text-muted-foreground italic">Unassigned</span>
+								<span class="text-muted-foreground italic"
+									>{$t('issueDetail.unassigned') || 'Unassigned'}</span
+								>
 							{/if}
 						</Select.Trigger>
 						<Select.Content>
 							<Select.Item value="unassigned">
-								<span class="text-muted-foreground italic">Unassigned</span>
+								<span class="text-muted-foreground italic"
+									>{$t('issueDetail.unassigned') || 'Unassigned'}</span
+								>
 							</Select.Item>
-							{#each members as member (member.id)}
+							{#each filteredMembers as member (member.id)}
 								{#if member.user_id}
 									<Select.Item value={member.user_id.toString()}>
 										<div class="flex items-center gap-2">

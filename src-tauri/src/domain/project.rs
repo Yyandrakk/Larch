@@ -99,6 +99,8 @@ pub struct Project {
     pub slug: String,
     pub description: String,
     pub owner: i64,
+    pub created_date: Option<String>,
+    pub modified_date: Option<String>,
 }
 
 impl From<ProjectDto> for Project {
@@ -109,6 +111,8 @@ impl From<ProjectDto> for Project {
             slug: dto.slug,
             description: dto.description,
             owner: dto.owner.id,
+            created_date: dto.created_date,
+            modified_date: dto.modified_date,
         }
     }
 }
@@ -121,6 +125,8 @@ impl From<taiga_client::models::ProjectListEntryDto> for Project {
             slug: dto.slug,
             description: dto.description,
             owner: dto.owner.id,
+            created_date: dto.created_date,
+            modified_date: dto.modified_date,
         }
     }
 }
