@@ -9,6 +9,7 @@ export interface Issue {
 	assigned_to?: number;
 	assigned_to_name?: string;
 	assigned_to_photo?: string;
+	modified_date?: string;
 }
 
 export interface User {

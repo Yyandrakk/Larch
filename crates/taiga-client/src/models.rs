@@ -129,6 +129,7 @@ pub struct IssueDto {
     pub owner: Option<i64>,
     pub assigned_to: Option<i64>,
     pub assigned_to_extra_info: Option<UserExtraInfo>,
+    pub modified_date: Option<String>,
 }
 
 // ============================================================================
