@@ -13,6 +13,7 @@ pub struct Issue {
     pub assigned_to: Option<i64>,
     pub assigned_to_name: Option<String>,
     pub assigned_to_photo: Option<String>,
+    pub modified_date: Option<String>,
 }
 
 impl From<IssueDto> for Issue {
@@ -34,6 +35,7 @@ impl From<IssueDto> for Issue {
                 .assigned_to_extra_info
                 .as_ref()
                 .and_then(|u| u.photo.clone()),
+            modified_date: dto.modified_date,
         }
     }
 }
@@ -62,16 +64,7 @@ mod tests {
                 photo: Some("http://example.com/photo.jpg".to_string()),
             }),
             owner: Some(999),
-            // The following fields are not part of IssueDto in taiga-client/src/models.rs
-            // and are removed for correctness based on the instruction.
-            // owner_extra_info: None,
-            // description: None,
-            // description_html: None,
-            // version: 1,
-            // tags: vec![],
-            // created_date: "2023-01-01".to_string(),
-            // modified_date: "2023-01-02".to_string(),
-            // is_closed: false,
+            modified_date: Some("2023-01-02T12:00:00Z".to_string()),
         };
 
         let issue: Issue = dto.into();
@@ -86,6 +79,10 @@ mod tests {
             issue.assigned_to_photo,
             Some("http://example.com/photo.jpg".to_string())
         );
+        assert_eq!(
+            issue.modified_date,
+            Some("2023-01-02T12:00:00Z".to_string())
+        );
     }
 
     #[test]
@@ -99,16 +96,7 @@ mod tests {
             assigned_to: None,
             assigned_to_extra_info: None,
             owner: None,
-            // The following fields are not part of IssueDto in taiga-client/src/models.rs
-            // and are removed for correctness based on the instruction.
-            // owner_extra_info: None,
-            // description: None,
-            // description_html: None,
-            // version: 1,
-            // tags: vec![],
-            // created_date: "2023-01-01".to_string(),
-            // modified_date: "2023-01-02".to_string(),
-            // is_closed: false,
+            modified_date: None,
         };
 
         let issue: Issue = dto.into();
@@ -118,5 +106,6 @@ mod tests {
         assert_eq!(issue.status_name, None);
         assert_eq!(issue.assigned_to, None);
         assert_eq!(issue.assigned_to_name, None);
+        assert_eq!(issue.modified_date, None);
     }
 }

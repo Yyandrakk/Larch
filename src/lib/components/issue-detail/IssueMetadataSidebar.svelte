@@ -11,10 +11,22 @@
 		HistoryEntry,
 		Attachment
 	} from '$lib/types';
+	import { tick } from 'svelte';
 	import * as Avatar from '$lib/components/ui/avatar';
 	import * as Select from '$lib/components/ui/select';
-	import { User, Calendar, Clock, AlertTriangle, Loader2 } from '@lucide/svelte';
+	import * as Popover from '$lib/components/ui/popover';
+	import * as Command from '$lib/components/ui/command';
+	import {
+		User,
+		Calendar,
+		Clock,
+		AlertTriangle,
+		Loader2,
+		Check,
+		ChevronsUpDown
+	} from '@lucide/svelte';
 	import { t } from 'svelte-i18n';
+	import { cn } from '$lib/utils';
 	import PrioritySelector from './PrioritySelector.svelte';
 	import SeveritySelector from './SeveritySelector.svelte';
 	import TypeSelector from './TypeSelector.svelte';
@@ -80,6 +92,16 @@
 		onRetryLoadAttachments?: () => void;
 	} = $props();
 
+	let assigneePopoverOpen = $state(false);
+	let assigneeTriggerRef = $state<HTMLButtonElement>(null!);
+
+	function closeAssigneePopoverAndFocus() {
+		assigneePopoverOpen = false;
+		tick().then(() => {
+			assigneeTriggerRef?.focus();
+		});
+	}
+
 	function formatDate(dateStr: string): string {
 		const date = new Date(dateStr);
 		if (isNaN(date.getTime())) {
@@ -105,16 +127,6 @@
 	function handleStatusChange(value: string | undefined) {
 		if (value && onStatusChange) {
 			onStatusChange(parseInt(value, 10));
-		}
-	}
-
-	function handleAssigneeChange(value: string | undefined) {
-		if (onAssigneeChange) {
-			if (value === 'unassigned') {
-				onAssigneeChange(null);
-			} else if (value) {
-				onAssigneeChange(parseInt(value, 10));
-			}
 		}
 	}
 
@@ -176,56 +188,105 @@
 			</span>
 			{#if canEditAssignee}
 				{#key issue.assigned_to_id}
-					<Select.Root
-						type="single"
-						value={issue.assigned_to_id ? issue.assigned_to_id.toString() : 'unassigned'}
-						onValueChange={handleAssigneeChange}
-						disabled={assigneeUpdating || disabled}
-					>
-						<Select.Trigger class="h-9 w-full">
-							{#if assigneeUpdating}
-								<Loader2 class="mr-2 h-4 w-4 animate-spin" />
-							{/if}
-							{#if issue.assigned_to_name}
-								<div class="flex items-center gap-2">
-									<Avatar.Root class="h-5 w-5">
-										{#if issue.assigned_to_photo}
-											<Avatar.Image src={issue.assigned_to_photo} alt={issue.assigned_to_name} />
-										{/if}
-										<Avatar.Fallback class="text-xs">
-											{getInitials(issue.assigned_to_name)}
-										</Avatar.Fallback>
-									</Avatar.Root>
-									<span class="truncate">{issue.assigned_to_name}</span>
-								</div>
-							{:else}
-								<span class="text-muted-foreground italic">Unassigned</span>
-							{/if}
-						</Select.Trigger>
-						<Select.Content>
-							<Select.Item value="unassigned">
-								<span class="text-muted-foreground italic">Unassigned</span>
-							</Select.Item>
-							{#each members as member (member.id)}
-								{#if member.user_id}
-									<Select.Item value={member.user_id.toString()}>
+					<Popover.Root bind:open={assigneePopoverOpen}>
+						<Popover.Trigger bind:ref={assigneeTriggerRef}>
+							{#snippet child({ props })}
+								<button
+									{...props}
+									class="border-input bg-background ring-offset-background hover:bg-accent hover:text-accent-foreground focus:ring-ring flex h-9 w-full items-center justify-between rounded-md border px-3 text-sm focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:opacity-50"
+									role="combobox"
+									aria-expanded={assigneePopoverOpen}
+									disabled={assigneeUpdating || disabled}
+								>
+									{#if assigneeUpdating}
+										<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+									{/if}
+									{#if issue.assigned_to_name}
 										<div class="flex items-center gap-2">
 											<Avatar.Root class="h-5 w-5">
-												{#if member.photo}
-													<Avatar.Image src={member.photo} alt={member.full_name} />
+												{#if issue.assigned_to_photo}
+													<Avatar.Image
+														src={issue.assigned_to_photo}
+														alt={issue.assigned_to_name}
+													/>
 												{/if}
 												<Avatar.Fallback class="text-xs">
-													{getInitials(member.full_name)}
+													{getInitials(issue.assigned_to_name)}
 												</Avatar.Fallback>
 											</Avatar.Root>
-											<span>{member.full_name}</span>
-											<span class="text-muted-foreground text-xs">({member.role_name})</span>
+											<span class="truncate">{issue.assigned_to_name}</span>
 										</div>
-									</Select.Item>
-								{/if}
-							{/each}
-						</Select.Content>
-					</Select.Root>
+									{:else}
+										<span class="text-muted-foreground italic"
+											>{$t('issueDetail.unassigned') || 'Unassigned'}</span
+										>
+									{/if}
+									<ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
+								</button>
+							{/snippet}
+						</Popover.Trigger>
+						<Popover.Content class="w-[240px] p-0">
+							<Command.Root>
+								<Command.Input placeholder={$t('filters.searchPeople') || 'Search people...'} />
+								<Command.List>
+									<Command.Empty>{$t('filters.noResults') || 'No results found.'}</Command.Empty>
+									<Command.Group>
+										<Command.Item
+											value="unassigned"
+											onSelect={() => {
+												if (onAssigneeChange) {
+													onAssigneeChange(null);
+												}
+												closeAssigneePopoverAndFocus();
+											}}
+										>
+											<Check
+												class={cn(
+													'mr-2 h-4 w-4',
+													!issue.assigned_to_id ? 'opacity-100' : 'opacity-0'
+												)}
+											/>
+											<span class="text-muted-foreground italic"
+												>{$t('issueDetail.unassigned') || 'Unassigned'}</span
+											>
+										</Command.Item>
+										{#each members as member (member.id)}
+											{#if member.user_id}
+												<Command.Item
+													value={member.full_name}
+													onSelect={() => {
+														if (onAssigneeChange && member.user_id) {
+															onAssigneeChange(member.user_id);
+														}
+														closeAssigneePopoverAndFocus();
+													}}
+												>
+													<Check
+														class={cn(
+															'mr-2 h-4 w-4',
+															issue.assigned_to_id === member.user_id ? 'opacity-100' : 'opacity-0'
+														)}
+													/>
+													<div class="flex items-center gap-2">
+														<Avatar.Root class="h-5 w-5">
+															{#if member.photo}
+																<Avatar.Image src={member.photo} alt={member.full_name} />
+															{/if}
+															<Avatar.Fallback class="text-xs">
+																{getInitials(member.full_name)}
+															</Avatar.Fallback>
+														</Avatar.Root>
+														<span>{member.full_name}</span>
+														<span class="text-muted-foreground text-xs">({member.role_name})</span>
+													</div>
+												</Command.Item>
+											{/if}
+										{/each}
+									</Command.Group>
+								</Command.List>
+							</Command.Root>
+						</Popover.Content>
+					</Popover.Root>
 				{/key}
 			{:else if issue.assigned_to_name}
 				<div class="flex items-center gap-2">

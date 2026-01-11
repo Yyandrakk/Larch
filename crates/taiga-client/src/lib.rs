@@ -9,7 +9,7 @@ pub mod prelude;
 use errors::TaigaClientError;
 use models::{
     AuthDetail, IssueDetailDto, IssueDto, IssueHistoryEntryDto, LoginRequest, Me, ProjectDto,
-    ProjectListEntryDto,
+    ProjectListEntryDto, RefreshRequest, RefreshResponse,
 };
 
 const API_V1_PREFIX: &str = "api/v1/";
@@ -71,6 +71,31 @@ impl TaigaClient {
                 _ => TaigaClientError::AuthFailed(status),
             };
             Err(err)
+        }
+    }
+
+    pub async fn refresh_token(
+        &self,
+        refresh_token: &str,
+    ) -> Result<RefreshResponse, TaigaClientError> {
+        let url = self.build_url("auth/refresh")?;
+        log::info!("Refreshing token at {}", url);
+
+        let request_body = RefreshRequest {
+            refresh: refresh_token,
+        };
+
+        let response = self.client.post(url).json(&request_body).send().await?;
+        log::info!("Refresh token response status: {}", response.status());
+
+        if response.status().is_success() {
+            let tokens = response.json::<RefreshResponse>().await?;
+            Ok(tokens)
+        } else {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            log::error!("Refresh token failed. Status: {}, Body: {}", status, body);
+            Err(TaigaClientError::Unauthorized(status))
         }
     }
 
@@ -436,7 +461,11 @@ impl TaigaClient {
         } else {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            log::error!("List attachments failed. Status: {}, Body: {}", status, body);
+            log::error!(
+                "List attachments failed. Status: {}, Body: {}",
+                status,
+                body
+            );
             let err = match status {
                 StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
                 StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
@@ -490,7 +519,11 @@ impl TaigaClient {
         } else {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            log::error!("Upload attachment failed. Status: {}, Body: {}", status, body);
+            log::error!(
+                "Upload attachment failed. Status: {}, Body: {}",
+                status,
+                body
+            );
             let err = match status {
                 StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
                 StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
@@ -524,7 +557,11 @@ impl TaigaClient {
         } else {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            log::error!("Delete attachment failed. Status: {}, Body: {}", status, body);
+            log::error!(
+                "Delete attachment failed. Status: {}, Body: {}",
+                status,
+                body
+            );
             let err = match status {
                 StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
                 StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {

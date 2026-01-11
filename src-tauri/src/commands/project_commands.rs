@@ -96,7 +96,13 @@ pub async fn get_aggregated_issues(
             };
             let val = assignee_ids
                 .iter()
-                .map(|id| if *id == -1 { "null".to_string() } else { id.to_string() })
+                .map(|id| {
+                    if *id == -1 {
+                        "null".to_string()
+                    } else {
+                        id.to_string()
+                    }
+                })
                 .collect::<Vec<_>>()
                 .join(",");
             query_params.push((key.to_string(), val));
@@ -141,7 +147,7 @@ pub async fn get_project_metadata(
         let token = token.clone();
         tasks.push(tauri::async_runtime::spawn(async move {
             let project_res = client.get_project(&token, pid).await;
-            
+
             let priorities_res = match client.get_priorities(&token, pid).await {
                 Ok(p) => Ok(p),
                 Err(e) => {
@@ -149,7 +155,7 @@ pub async fn get_project_metadata(
                     Err(e)
                 }
             };
-            
+
             let severities_res = match client.get_severities(&token, pid).await {
                 Ok(s) => Ok(s),
                 Err(e) => {
@@ -157,7 +163,7 @@ pub async fn get_project_metadata(
                     Err(e)
                 }
             };
-            
+
             let types_res = match client.get_issue_types(&token, pid).await {
                 Ok(t) => Ok(t),
                 Err(e) => {
@@ -165,7 +171,7 @@ pub async fn get_project_metadata(
                     Err(e)
                 }
             };
-            
+
             let tags_res = match client.get_project_tags_colors(&token, pid).await {
                 Ok(t) => Ok(t),
                 Err(e) => {
@@ -173,7 +179,7 @@ pub async fn get_project_metadata(
                     Err(e)
                 }
             };
-            
+
             let members_res = match client.get_memberships(&token, pid).await {
                 Ok(m) => Ok(m),
                 Err(e) => {

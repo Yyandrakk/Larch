@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-// Represents the JSON body for a password-based authentication request.
 #[derive(Debug, Serialize)]
 pub struct LoginRequest<'a> {
     #[serde(rename = "type")]
@@ -9,12 +8,23 @@ pub struct LoginRequest<'a> {
     pub password: &'a str,
 }
 
-// Represents the successful authentication response from the Taiga API.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AuthDetail {
     pub id: i64,
     pub username: String,
     pub auth_token: String,
+    pub refresh: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RefreshRequest<'a> {
+    pub refresh: &'a str,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RefreshResponse {
+    pub auth_token: String,
+    pub refresh: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -67,6 +77,8 @@ pub struct ProjectDto {
     pub slug: String,
     pub description: String,
     pub owner: UserShort,
+    pub created_date: Option<String>,
+    pub modified_date: Option<String>,
     #[serde(default)]
     pub issue_statuses: Option<Vec<IssueStatusDto>>,
     #[serde(default)]
@@ -89,6 +101,8 @@ pub struct ProjectListEntryDto {
     pub description: String,
     pub owner: UserShort,
     pub members: Option<Vec<i64>>,
+    pub created_date: Option<String>,
+    pub modified_date: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -115,6 +129,7 @@ pub struct IssueDto {
     pub owner: Option<i64>,
     pub assigned_to: Option<i64>,
     pub assigned_to_extra_info: Option<UserExtraInfo>,
+    pub modified_date: Option<String>,
 }
 
 // ============================================================================

@@ -2,16 +2,10 @@
 	import { onMount } from 'svelte';
 	import { invoke } from '@tauri-apps/api/core';
 	import { t } from 'svelte-i18n';
-	import { Search, Users, Globe, Folder, Loader2 } from '@lucide/svelte';
+	import { Search, Users, Globe, Folder, Loader2, Calendar } from '@lucide/svelte';
 	import { Switch } from '$lib/components/ui/switch';
 	import { toast } from 'svelte-sonner';
-
-	type Project = {
-		id: number;
-		name: string;
-		description: string;
-		slug: string;
-	};
+	import type { Project } from '$lib/types';
 
 	let { onContinue } = $props<{ onContinue: () => void }>();
 
@@ -22,13 +16,37 @@
 	let searchQuery = $state('');
 
 	let filteredProjects = $derived(
-		projects.filter(
-			(p) =>
-				searchQuery === '' ||
-				p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				p.slug.toLowerCase().includes(searchQuery.toLowerCase())
-		)
+		[...projects]
+			.filter(
+				(p) =>
+					searchQuery === '' ||
+					p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+					p.slug.toLowerCase().includes(searchQuery.toLowerCase())
+			)
+			.sort((a, b) => {
+				const dateA = a.modified_date || a.created_date || '';
+				const dateB = b.modified_date || b.created_date || '';
+				return dateB.localeCompare(dateA); // Newest first
+			})
 	);
+
+	function formatDate(dateString: string | null | undefined): string {
+		if (!dateString) return '';
+		try {
+			const date = new Date(dateString);
+			return date.toLocaleDateString(undefined, {
+				year: 'numeric',
+				month: 'short',
+				day: 'numeric'
+			});
+		} catch {
+			return '';
+		}
+	}
+
+	function getDisplayDate(project: Project): string {
+		return formatDate(project.modified_date || project.created_date);
+	}
 
 	let selectedCount = $derived(selectedProjectIds.length);
 
@@ -153,6 +171,12 @@
 									<Users class="h-4 w-4" />
 									<span>{$t('projects.team')}</span>
 								</div>
+								{#if getDisplayDate(project)}
+									<div class="flex items-center gap-1.5">
+										<Calendar class="h-4 w-4" />
+										<span>{getDisplayDate(project)}</span>
+									</div>
+								{/if}
 							</div>
 						</div>
 

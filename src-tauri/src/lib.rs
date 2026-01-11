@@ -52,6 +52,7 @@ pub fn run() {
             commands::auth_commands::login,
             commands::auth_commands::has_api_token,
             commands::auth_commands::logout,
+            commands::auth_commands::refresh_token,
             commands::user_commands::get_me,
             commands::project_commands::get_projects,
             commands::project_commands::list_issues,

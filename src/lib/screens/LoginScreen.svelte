@@ -5,6 +5,8 @@
 	import { CMD_LOGIN } from '$lib/commands.svelte';
 	import InstanceTypeToggle from '$lib/components/auth/InstanceTypeToggle.svelte';
 	import AuthInput from '$lib/components/auth/AuthInput.svelte';
+	import { setCurrentUser } from '$lib/stores/user.svelte';
+	import type { User as UserType } from '$lib/types';
 
 	let instanceType = $state<'cloud' | 'self'>('cloud');
 	let customUrl = $state('');
@@ -19,15 +21,15 @@
 		loading = true;
 		errorMsg = null;
 
-		const apiUrl = instanceType === 'cloud' ? 'https://api.taiga.io' : customUrl.replace(/\/$/, ''); // Remove trailing slash
+		const apiUrl = instanceType === 'cloud' ? 'https://api.taiga.io' : customUrl.replace(/\/$/, '');
 
 		try {
-			const user = await invoke(CMD_LOGIN, {
+			const user = await invoke<UserType>(CMD_LOGIN, {
 				apiUrl,
 				username,
 				password
 			});
-			console.log('Login successful for user:', user);
+			setCurrentUser(user);
 			onLoginSuccess();
 		} catch (err) {
 			console.error('Login failed:', err);

@@ -9,6 +9,18 @@ export interface Issue {
 	assigned_to?: number;
 	assigned_to_name?: string;
 	assigned_to_photo?: string;
+	modified_date?: string;
+}
+
+export interface User {
+	id: number;
+	username: string;
+	full_name: string;
+	email: string;
+	photo: string | null;
+	big_photo: string | null;
+	gravatar_id: string;
+	is_active: boolean;
 }
 
 export interface Project {
@@ -17,6 +29,8 @@ export interface Project {
 	slug: string;
 	description: string;
 	owner: number;
+	created_date: string | null;
+	modified_date: string | null;
 }
 
 export interface IssueStatus {

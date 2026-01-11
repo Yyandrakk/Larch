@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Issue, Project } from '$lib/types';
 	import { t } from 'svelte-i18n';
-	import { UserPlus } from '@lucide/svelte';
+	import { UserPlus, Clock } from '@lucide/svelte';
 
 	let {
 		issues = [],
@@ -31,6 +31,21 @@
 			.join('')
 			.toUpperCase()
 			.slice(0, 2);
+	}
+
+	function formatDate(dateStr: string | undefined): string {
+		if (!dateStr) return '';
+		try {
+			const date = new Date(dateStr);
+			if (isNaN(date.getTime())) return '';
+			return date.toLocaleDateString(undefined, {
+				year: 'numeric',
+				month: 'short',
+				day: 'numeric'
+			});
+		} catch {
+			return '';
+		}
 	}
 </script>
 
@@ -62,12 +77,17 @@
 			>
 				{$t('table.assignedTo')}
 			</th>
+			<th
+				class="border-b border-[#243347] px-2 py-3 text-xs font-semibold tracking-wider text-[#93a9c8] uppercase"
+			>
+				{$t('dashboard.lastModified')}
+			</th>
 		</tr>
 	</thead>
 	<tbody class="text-sm">
 		{#if issues.length === 0}
 			<tr>
-				<td colspan="5" class="h-24 text-center text-[#93a9c8]">
+				<td colspan="6" class="h-24 text-center text-[#93a9c8]">
 					{$t('dashboard.noIssues')}
 				</td>
 			</tr>
@@ -132,6 +152,16 @@
 							>
 								<UserPlus class="h-3.5 w-3.5 text-[#93a9c8]" />
 							</div>
+						{/if}
+					</td>
+					<td class="px-2 py-2.5">
+						{#if issue.modified_date}
+							<div class="flex items-center gap-1.5 text-xs text-[#93a9c8]">
+								<Clock class="h-3.5 w-3.5" />
+								<span>{formatDate(issue.modified_date)}</span>
+							</div>
+						{:else}
+							<span class="text-xs text-[#93a9c8]/50">—</span>
 						{/if}
 					</td>
 				</tr>
