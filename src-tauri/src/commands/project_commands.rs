@@ -2,7 +2,7 @@ use crate::domain::issue::Issue;
 use crate::domain::project::Project;
 use crate::error::Result;
 use crate::repositories::Repository;
-use crate::services::credentials;
+use crate::services::{credentials, token_refresh};
 use taiga_client::TaigaClient;
 
 use serde::Deserialize;
@@ -19,12 +19,21 @@ pub struct FilterObject {
 
 #[tauri::command]
 pub async fn get_projects(client: tauri::State<'_, TaigaClient>) -> Result<Vec<Project>> {
-    let token = credentials::get_api_token()?;
-    // Fetch current user to filter projects
-    let me = client.get_me(&token).await?;
-    let projects_dto = client.get_projects(&token, Some(me.id)).await?;
-    let projects = projects_dto.into_iter().map(|p| p.into()).collect();
-    Ok(projects)
+    async fn fetch(client: &TaigaClient) -> Result<Vec<Project>> {
+        let token = credentials::get_api_token()?;
+        let me = client.get_me(&token).await?;
+        let projects_dto = client.get_projects(&token, Some(me.id)).await?;
+        Ok(projects_dto.into_iter().map(|p| p.into()).collect())
+    }
+
+    match fetch(&client).await {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(&client).await
+        }
+        result => result,
+    }
 }
 
 #[tauri::command]
@@ -32,10 +41,20 @@ pub async fn list_issues(
     client: tauri::State<'_, TaigaClient>,
     project_id: i64,
 ) -> Result<Vec<Issue>> {
-    let token = credentials::get_api_token()?;
-    let issues_dto = client.list_issues(&token, project_id, None).await?;
-    let issues = issues_dto.into_iter().map(|i| i.into()).collect();
-    Ok(issues)
+    async fn fetch(client: &TaigaClient, project_id: i64) -> Result<Vec<Issue>> {
+        let token = credentials::get_api_token()?;
+        let issues_dto = client.list_issues(&token, project_id, None).await?;
+        Ok(issues_dto.into_iter().map(|i| i.into()).collect())
+    }
+
+    match fetch(&client, project_id).await {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(&client, project_id).await
+        }
+        result => result,
+    }
 }
 
 #[tauri::command]
@@ -44,8 +63,6 @@ pub async fn get_aggregated_issues(
     repo: tauri::State<'_, crate::repositories::SqliteRepository>,
     filters: FilterObject,
 ) -> Result<Vec<Issue>> {
-    let token = credentials::get_api_token()?;
-
     // 1. Get selected projects from DB
     let selected_ids_opt = repo.get_config("selected_projects").await?;
     let mut target_project_ids: Vec<i64> = if let Some(val) = selected_ids_opt {
@@ -109,25 +126,64 @@ pub async fn get_aggregated_issues(
         }
     }
 
-    // 4. Fetch concurrently
-    let mut tasks = Vec::new();
-    for pid in target_project_ids {
-        let client = client.inner().clone();
-        let token = token.clone();
-        let params = query_params.clone();
-        tasks.push(tauri::async_runtime::spawn(async move {
-            client.list_issues(&token, pid, Some(params)).await
-        }));
+    // 4. Fetch concurrently with token refresh support
+    async fn fetch_all_issues(
+        client: &TaigaClient,
+        project_ids: &[i64],
+        query_params: &[(String, String)],
+    ) -> (Vec<taiga_client::models::IssueDto>, bool) {
+        let token = match credentials::get_api_token() {
+            Ok(t) => t,
+            Err(_) => return (vec![], false),
+        };
+
+        let mut tasks = Vec::new();
+        for pid in project_ids {
+            let client = client.clone();
+            let token = token.clone();
+            let params: Vec<(String, String)> = query_params.to_vec();
+            let pid = *pid;
+            tasks.push(tauri::async_runtime::spawn(async move {
+                client.list_issues(&token, pid, Some(params)).await
+            }));
+        }
+
+        let mut all_issues = Vec::new();
+        let mut had_unauthorized = false;
+        for task in tasks {
+            match task.await {
+                Ok(Ok(issues)) => all_issues.extend(issues),
+                Ok(Err(taiga_client::errors::TaigaClientError::Unauthorized(_))) => {
+                    had_unauthorized = true;
+                }
+                Ok(Err(e)) => log::error!("Failed to fetch issues: {}", e),
+                Err(e) => log::error!("Task join error: {}", e),
+            }
+        }
+
+        (all_issues, had_unauthorized)
     }
 
-    let mut all_issues = Vec::new();
-    for task in tasks {
-        match task.await {
-            Ok(Ok(issues)) => all_issues.extend(issues),
-            Ok(Err(e)) => log::error!("Failed to fetch issues: {}", e), // Partial failure strategy
-            Err(e) => log::error!("Task join error: {}", e),
-        }
+    let (mut all_issues, had_unauthorized) =
+        fetch_all_issues(&client, &target_project_ids, &query_params).await;
+
+    if had_unauthorized {
+        log::info!("Unauthorized detected in batch fetch, attempting token refresh");
+        token_refresh::refresh_token(&client).await?;
+        let (retried_issues, _) =
+            fetch_all_issues(&client, &target_project_ids, &query_params).await;
+        all_issues = retried_issues;
     }
+
+    // Sort globally by modified_date (newest first) AFTER aggregation
+    all_issues.sort_by(|a, b| {
+        match (&a.modified_date, &b.modified_date) {
+            (Some(date_a), Some(date_b)) => date_b.cmp(date_a), // Descending (newest first)
+            (Some(_), None) => std::cmp::Ordering::Less,        // Issues with dates come first
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => std::cmp::Ordering::Equal,
+        }
+    });
 
     Ok(all_issues.into_iter().map(|i| i.into()).collect())
 }
@@ -324,4 +380,92 @@ pub async fn save_selected_projects(
     let value = serde_json::to_string(&project_ids).unwrap_or_default();
     repo.save_config("selected_projects", &value).await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use taiga_client::models::{IssueDto, IssueStatusExtraInfo};
+
+    fn create_issue_dto(id: i64, modified_date: Option<&str>) -> IssueDto {
+        IssueDto {
+            id,
+            subject: format!("Issue {}", id),
+            project: 1,
+            status: 1,
+            status_extra_info: Some(IssueStatusExtraInfo {
+                name: "Open".to_string(),
+                color: "#000".to_string(),
+                is_closed: false,
+            }),
+            owner: None,
+            assigned_to: None,
+            assigned_to_extra_info: None,
+            modified_date: modified_date.map(String::from),
+        }
+    }
+
+    #[test]
+    fn test_global_sorting_by_modified_date_descending() {
+        let mut issues = vec![
+            create_issue_dto(1, Some("2024-01-01T10:00:00Z")),
+            create_issue_dto(2, Some("2024-01-03T10:00:00Z")),
+            create_issue_dto(3, Some("2024-01-02T10:00:00Z")),
+        ];
+
+        issues.sort_by(|a, b| match (&a.modified_date, &b.modified_date) {
+            (Some(date_a), Some(date_b)) => date_b.cmp(date_a),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => std::cmp::Ordering::Equal,
+        });
+
+        assert_eq!(issues[0].id, 2); // 2024-01-03 (newest)
+        assert_eq!(issues[1].id, 3); // 2024-01-02
+        assert_eq!(issues[2].id, 1); // 2024-01-01 (oldest)
+    }
+
+    #[test]
+    fn test_issues_with_null_dates_sorted_to_end() {
+        let mut issues = vec![
+            create_issue_dto(1, None),
+            create_issue_dto(2, Some("2024-01-02T10:00:00Z")),
+            create_issue_dto(3, None),
+            create_issue_dto(4, Some("2024-01-01T10:00:00Z")),
+        ];
+
+        issues.sort_by(|a, b| match (&a.modified_date, &b.modified_date) {
+            (Some(date_a), Some(date_b)) => date_b.cmp(date_a),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => std::cmp::Ordering::Equal,
+        });
+
+        assert_eq!(issues[0].id, 2); // 2024-01-02 (newest with date)
+        assert_eq!(issues[1].id, 4); // 2024-01-01
+                                     // Issues 1 and 3 (no date) should be at the end
+        assert!(issues[2].modified_date.is_none());
+        assert!(issues[3].modified_date.is_none());
+    }
+
+    #[test]
+    fn test_interleaved_project_issues_sorted_globally() {
+        let mut issues = vec![
+            create_issue_dto(1, Some("2024-01-05T10:00:00Z")), // Project A - oldest
+            create_issue_dto(2, Some("2024-01-01T10:00:00Z")), // Project A
+            create_issue_dto(3, Some("2024-01-03T10:00:00Z")), // Project B - middle
+            create_issue_dto(4, Some("2024-01-07T10:00:00Z")), // Project B - newest
+        ];
+
+        issues.sort_by(|a, b| match (&a.modified_date, &b.modified_date) {
+            (Some(date_a), Some(date_b)) => date_b.cmp(date_a),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => std::cmp::Ordering::Equal,
+        });
+
+        assert_eq!(issues[0].id, 4); // 2024-01-07 (newest)
+        assert_eq!(issues[1].id, 1); // 2024-01-05
+        assert_eq!(issues[2].id, 3); // 2024-01-03
+        assert_eq!(issues[3].id, 2); // 2024-01-01 (oldest)
+    }
 }
