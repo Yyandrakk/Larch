@@ -31,12 +31,16 @@ pub enum Error {
         "Version conflict: the issue was modified by another user. Please refresh and try again."
     )]
     VersionConflict,
+
+    #[error("Unauthorized: authentication required or session expired")]
+    Unauthorized,
 }
 
 impl From<taiga_client::errors::TaigaClientError> for Error {
     fn from(e: taiga_client::errors::TaigaClientError) -> Self {
         match e {
             taiga_client::errors::TaigaClientError::VersionConflict(_) => Error::VersionConflict,
+            taiga_client::errors::TaigaClientError::Unauthorized(_) => Error::Unauthorized,
             other => Error::TaigaClient(other.to_string()),
         }
     }
