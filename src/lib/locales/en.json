@@ -41,6 +41,7 @@
 		"selected": "Selected",
 		"searchPlaceholder": "Search projects...",
 		"noProjects": "No projects found.",
+		"selectAll": "Select All",
 		"public": "Public",
 		"private": "Private",
 		"team": "Team",
