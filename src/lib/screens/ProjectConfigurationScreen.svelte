@@ -4,6 +4,8 @@
 	import { t } from 'svelte-i18n';
 	import { Search, Users, Globe, Folder, Loader2, Calendar } from '@lucide/svelte';
 	import { Switch } from '$lib/components/ui/switch';
+	import { Checkbox } from '$lib/components/ui/checkbox';
+	import { Label } from '$lib/components/ui/label';
 	import { toast } from 'svelte-sonner';
 	import type { Project } from '$lib/types';
 
@@ -96,6 +98,26 @@
 	function getSlugAbbrev(slug: string): string {
 		return slug.slice(0, 8).toUpperCase();
 	}
+
+	let areAllFilteredSelected = $derived(
+		filteredProjects.length > 0 &&
+			filteredProjects.every((p) => selectedProjectIds.includes(p.id))
+	);
+
+	let isIndeterminate = $derived(
+		filteredProjects.some((p) => selectedProjectIds.includes(p.id)) && !areAllFilteredSelected
+	);
+
+	function toggleSelectAll(checked: boolean | 'indeterminate') {
+		if (checked === true) {
+			const newIds = filteredProjects.map((p) => p.id);
+			const toAdd = newIds.filter((id) => !selectedProjectIds.includes(id));
+			selectedProjectIds = [...selectedProjectIds, ...toAdd];
+		} else {
+			const filteredIds = filteredProjects.map((p) => p.id);
+			selectedProjectIds = selectedProjectIds.filter((id) => !filteredIds.includes(id));
+		}
+	}
 </script>
 
 <div class="flex-1 overflow-y-auto px-8 py-8 pb-28">
@@ -113,15 +135,29 @@
 			<p class="text-sm text-[#93a9c8]">{$t('projects.subtitle')}</p>
 		</div>
 
-		<div class="mb-6 flex rounded-xl border border-[#243347] bg-[#1c2633] p-1.5">
-			<div class="relative flex-1">
-				<Search class="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-[#93a9c8]" />
-				<input
-					type="text"
-					placeholder={$t('projects.searchPlaceholder')}
-					bind:value={searchQuery}
-					class="w-full rounded-lg border-none bg-transparent p-2 pl-10 text-sm text-white placeholder-[#93a9c8] focus:ring-0"
+		<div class="mb-6 flex gap-4">
+			<div class="flex flex-1 rounded-xl border border-[#243347] bg-[#1c2633] p-1.5">
+				<div class="relative flex-1">
+					<Search class="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-[#93a9c8]" />
+					<input
+						type="text"
+						placeholder={$t('projects.searchPlaceholder')}
+						bind:value={searchQuery}
+						class="w-full rounded-lg border-none bg-transparent p-2 pl-10 text-sm text-white placeholder-[#93a9c8] focus:ring-0"
+					/>
+				</div>
+			</div>
+
+			<div class="flex items-center gap-2 rounded-xl border border-[#243347] bg-[#1c2633] px-4">
+				<Checkbox
+					id="select-all"
+					checked={areAllFilteredSelected}
+					indeterminate={isIndeterminate}
+					onCheckedChange={toggleSelectAll}
 				/>
+				<Label for="select-all" class="cursor-pointer text-sm font-medium text-[#93a9c8]">
+					{$t('projects.selectAll')}
+				</Label>
 			</div>
 		</div>
 
