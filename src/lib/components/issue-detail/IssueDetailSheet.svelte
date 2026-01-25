@@ -795,7 +795,18 @@
 							{issue.is_closed ? '✓ Closed' : '● Open'}
 						</Badge>
 					</div>
-					<StatusChip status={saveStatus} onRefresh={handleReload} />
+					<div class="flex items-center gap-2">
+						<StatusChip status={saveStatus} onRefresh={handleReload} />
+						<Button
+							variant="ghost"
+							size="icon"
+							class="h-8 w-8"
+							onclick={handleShareIssue}
+							title={$t('issueDetail.share') || 'Share'}
+						>
+							<Share2 class="h-4 w-4" />
+						</Button>
+					</div>
 				</div>
 				<Sheet.Title class="text-xl leading-tight font-semibold">
 					{issue.subject}
