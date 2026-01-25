@@ -46,7 +46,9 @@
 		"team": "Team",
 		"projectsSelected": "projects selected",
 		"saveAndContinue": "Save Changes",
-		"saved": "Project selection saved"
+		"saved": "Project selection saved",
+		"selectAll": "Select All",
+		"deselectAll": "Deselect All"
 	},
 	"errors": {
 		"unknown": "An unknown error occurred.",
@@ -92,6 +94,7 @@
 		"assignees": "assignees",
 		"include": "Include",
 		"exclude": "Exclude",
+		"selectAll": "Select All",
 		"addFilter": "Add Filter",
 		"projectFilter": "Project Filter",
 		"statusFilter": "Status Filter",
