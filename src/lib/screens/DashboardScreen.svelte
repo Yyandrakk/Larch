@@ -18,6 +18,7 @@
 
 	let issues = $state<Issue[]>([]);
 	let projects = $state<Project[]>([]);
+	let selectedProjectIds = $state<number[]>([]);
 	let metadata = $state<Record<number, ProjectMetadata>>({});
 	let filters = $state<FilterObject>({});
 	let loading = $state(false);
@@ -40,6 +41,10 @@
 
 	let activeProjectCount = $derived(filters.project_ids?.length || 0);
 
+	let activeProjects = $derived(
+		projects.filter((project) => selectedProjectIds.includes(project.id))
+	);
+
 	async function loadData() {
 		loading = true;
 		try {
@@ -53,6 +58,7 @@
 			}
 
 			const selectedIds: number[] = await invoke(CMD_GET_SELECTED_PROJECTS);
+			selectedProjectIds = selectedIds;
 
 			if (!filters.project_ids && selectedIds.length > 0) {
 				filters.project_ids = selectedIds;
@@ -168,7 +174,7 @@
 
 		<div class="rounded-xl border border-[#243347] bg-[#161e2a] shadow-sm">
 			<FilterBar
-				{projects}
+				projects={activeProjects}
 				{metadata}
 				{filters}
 				{currentUserId}
