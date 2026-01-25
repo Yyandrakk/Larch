@@ -34,6 +34,24 @@
 		projects.filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
 	);
 
+	let allVisibleIds = $derived(filteredProjects.map((p) => p.id));
+	let areAllVisibleSelected = $derived(
+		allVisibleIds.length > 0 && allVisibleIds.every((id) => localSelectedIds.includes(id))
+	);
+	let isAnyVisibleSelected = $derived(allVisibleIds.some((id) => localSelectedIds.includes(id)));
+
+	let masterChecked = $derived(areAllVisibleSelected);
+	let masterIndeterminate = $derived(!areAllVisibleSelected && isAnyVisibleSelected);
+
+	function toggleAll() {
+		if (masterChecked) {
+			localSelectedIds = localSelectedIds.filter((id) => !allVisibleIds.includes(id));
+		} else {
+			const newIds = allVisibleIds.filter((id) => !localSelectedIds.includes(id));
+			localSelectedIds = [...localSelectedIds, ...newIds];
+		}
+	}
+
 	function toggleProject(id: number) {
 		if (localSelectedIds.includes(id)) {
 			localSelectedIds = localSelectedIds.filter((i) => i !== id);
@@ -124,6 +142,16 @@
 					: 'focus:border-[#196ee6]/50 focus:ring-[#196ee6]/20'}"
 			/>
 		</div>
+	</div>
+
+	<div class="flex items-center gap-3 border-b border-[#2d3540] bg-[#1e2329] px-3 py-2">
+		<Checkbox
+			checked={masterChecked}
+			indeterminate={masterIndeterminate}
+			onCheckedChange={toggleAll}
+			class="border-slate-600 bg-[#111821] {localExclude ? 'text-red-500' : 'text-[#196ee6]'}"
+		/>
+		<span class="text-xs font-semibold text-slate-300">{$t('filters.selectAll')}</span>
 	</div>
 
 	<div class="custom-scrollbar max-h-[300px] space-y-0.5 overflow-y-auto bg-[#1e2329] p-1.5">

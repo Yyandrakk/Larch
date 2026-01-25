@@ -128,6 +128,38 @@
 	let selectedCount = $derived(
 		groupedStatuses.filter((s) => isStatusSelected(s.status.name)).length
 	);
+
+	let allVisibleStatuses = $derived([...unifiedStatuses, ...projectSpecificStatuses]);
+
+	function getAllVisibleStatusIds() {
+		const ids: number[] = [];
+		allVisibleStatuses.forEach((s) => {
+			ids.push(...getStatusIdsByName(s.status.name));
+		});
+		return ids;
+	}
+
+	let areAllVisibleSelected = $derived.by(() => {
+		if (allVisibleStatuses.length === 0) return false;
+		return allVisibleStatuses.every((s) => isStatusSelected(s.status.name));
+	});
+
+	let isAnyVisibleSelected = $derived.by(() => {
+		if (allVisibleStatuses.length === 0) return false;
+		return allVisibleStatuses.some((s) => isStatusSelected(s.status.name));
+	});
+
+	let masterChecked = $derived(areAllVisibleSelected);
+	let masterIndeterminate = $derived(!areAllVisibleSelected && isAnyVisibleSelected);
+
+	function toggleAll() {
+		const allIds = getAllVisibleStatusIds();
+		if (masterChecked) {
+			localSelectedIds = localSelectedIds.filter((id) => !allIds.includes(id));
+		} else {
+			localSelectedIds = [...new Set([...localSelectedIds, ...allIds])];
+		}
+	}
 </script>
 
 <Popover.Content
@@ -178,6 +210,16 @@
 					: 'focus:border-[#196ee6]/50 focus:ring-[#196ee6]/20'}"
 			/>
 		</div>
+	</div>
+
+	<div class="flex items-center gap-3 border-b border-[#2d3540] bg-[#1e2329] px-3 py-2">
+		<Checkbox
+			checked={masterChecked}
+			indeterminate={masterIndeterminate}
+			onCheckedChange={toggleAll}
+			class="border-slate-600 bg-[#111821] {localExclude ? 'text-red-500' : 'text-[#196ee6]'}"
+		/>
+		<span class="text-xs font-semibold text-slate-300">{$t('filters.selectAll')}</span>
 	</div>
 
 	<div class="custom-scrollbar max-h-[340px] overflow-y-auto bg-[#1e2329]">

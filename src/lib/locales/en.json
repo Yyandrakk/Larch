@@ -59,7 +59,8 @@
 		"close": "Close",
 		"cancel": "Cancel",
 		"saving": "Saving...",
-		"add": "Add"
+		"add": "Add",
+		"uploading": "Uploading image..."
 	},
 	"dashboard": {
 		"title": "Dashboard",
@@ -215,6 +216,9 @@
 		"activity": "Activity",
 		"noActivity": "No activity yet",
 		"created": "Created",
-		"updated": "Updated"
+		"updated": "Updated",
+		"share": "Share",
+		"shareCopied": "Issue URL copied to clipboard",
+		"shareError": "Failed to copy URL"
 	}
 }
