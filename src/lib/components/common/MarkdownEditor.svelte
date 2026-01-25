@@ -9,17 +9,20 @@
 		placeholder = '',
 		disabled = false,
 		submitting = false,
-		onSubmit
+		onSubmit,
+		onUpload
 	}: {
 		value?: string;
 		placeholder?: string;
 		disabled?: boolean;
 		submitting?: boolean;
 		onSubmit?: (text: string) => void;
+		onUpload?: (file: File) => Promise<string | undefined>;
 	} = $props();
 
 	let showPreview = $state(false);
 	let textareaRef = $state<HTMLTextAreaElement | null>(null);
+	let uploading = $state(false);
 
 	// ============================================================================
 	// Helper: Apply selection after DOM update
@@ -106,6 +109,48 @@
 	// Event Handlers
 	// ============================================================================
 
+	async function handlePaste(e: ClipboardEvent) {
+		if (!onUpload || disabled || submitting || uploading) return;
+
+		const items = e.clipboardData?.items;
+		if (!items) return;
+
+		for (const item of items) {
+			if (item.type.startsWith('image/')) {
+				const file = item.getAsFile();
+				if (!file) continue;
+
+				e.preventDefault();
+				uploading = true;
+
+				try {
+					const markdown = await onUpload(file);
+					if (markdown) {
+						// Insert markdown at cursor
+						const toInsert = markdown.startsWith('!') ? markdown : `![${file.name}](${markdown})`;
+						await insertTextAtCursor(toInsert);
+					}
+				} catch (error) {
+					console.error('Failed to upload image:', error);
+				} finally {
+					uploading = false;
+				}
+				return; // Handle only the first image
+			}
+		}
+	}
+
+	async function insertTextAtCursor(text: string) {
+		if (!textareaRef) return;
+		const start = textareaRef.selectionStart;
+		const end = textareaRef.selectionEnd;
+		const before = value.substring(0, start);
+		const after = value.substring(end);
+
+		value = before + text + after;
+		await setSelectionAndFocus(start + text.length, start + text.length);
+	}
+
 	function handleKeydown(e: KeyboardEvent) {
 		// Shift+Enter to submit
 		if (e.key === 'Enter' && e.shiftKey) {
@@ -178,8 +223,8 @@
 	// Derived State
 	// ============================================================================
 
-	let canSubmit = $derived(value.trim().length > 0 && !disabled && !submitting);
-	let isEditorDisabled = $derived(disabled || showPreview);
+	let canSubmit = $derived(value.trim().length > 0 && !disabled && !submitting && !uploading);
+	let isEditorDisabled = $derived(disabled || showPreview || uploading);
 </script>
 
 <div class="space-y-2">
@@ -272,8 +317,9 @@
 			bind:this={textareaRef}
 			bind:value
 			{placeholder}
-			disabled={disabled || submitting}
+			disabled={disabled || submitting || uploading}
 			onkeydown={handleKeydown}
+			onpaste={handlePaste}
 			class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[100px] w-full resize-none rounded-lg border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 			rows={4}
 		></textarea>
@@ -282,7 +328,11 @@
 	<!-- Submit Row -->
 	<div class="flex items-center justify-between">
 		<span class="text-muted-foreground text-xs">
-			{$t('issueDetail.shiftEnterToSubmit') || 'Shift+Enter to submit'}
+			{#if uploading}
+				{$t('common.uploading') || 'Uploading image...'}
+			{:else}
+				{$t('issueDetail.shiftEnterToSubmit') || 'Shift+Enter to submit'}
+			{/if}
 		</span>
 		<Button size="sm" onclick={handleSubmit} disabled={!canSubmit}>
 			{#if submitting}

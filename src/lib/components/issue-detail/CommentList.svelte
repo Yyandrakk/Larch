@@ -9,12 +9,14 @@
 		comments,
 		commentText = $bindable(''),
 		submitting = false,
-		onSubmit
+		onSubmit,
+		onUpload
 	}: {
 		comments: HistoryEntry[];
 		commentText?: string;
 		submitting?: boolean;
 		onSubmit?: (text: string) => void;
+		onUpload?: (file: File) => Promise<string | undefined>;
 	} = $props();
 
 	function getInitials(name: string): string {
@@ -85,6 +87,7 @@
 			disabled={false}
 			{submitting}
 			onSubmit={handleSubmit}
+			{onUpload}
 		/>
 	</div>
 	<Separator class="my-4" />

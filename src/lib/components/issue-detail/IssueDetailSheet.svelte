@@ -17,7 +17,8 @@
 		CMD_UPDATE_ISSUE_TAGS,
 		CMD_UPLOAD_ISSUE_ATTACHMENT,
 		CMD_DELETE_ISSUE_ATTACHMENT,
-		CMD_GET_ISSUE_ATTACHMENTS
+		CMD_GET_ISSUE_ATTACHMENTS,
+		CMD_GET_TAIGA_BASE_URL
 	} from '$lib/commands.svelte';
 	import type {
 		IssueDetail,
@@ -38,11 +39,12 @@
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { t } from 'svelte-i18n';
 	import { toast } from 'svelte-sonner';
-	import { MessageSquare, Edit3, X, Save, Loader2, ChevronRight } from '@lucide/svelte';
+	import { MessageSquare, Edit3, X, Save, Loader2, ChevronRight, Share2 } from '@lucide/svelte';
 	import CommentList from './CommentList.svelte';
 	import StatusChip from './StatusChip.svelte';
 	import IssueMetadataSidebar from './IssueMetadataSidebar.svelte';
 	import { setPendingCommit } from '$lib/stores/pendingClose';
+	import { tick } from 'svelte';
 
 	let {
 		issueId = $bindable<number | null>(null),
@@ -80,6 +82,7 @@
 	let isEditingDescription = $state(false);
 	let descriptionDraft = $state('');
 	let descriptionSaving = $state(false);
+	let uploadingDescription = $state(false);
 	let hasDraft = $state(false);
 	let draftSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 	const DRAFT_DEBOUNCE_MS = 2000;
@@ -96,6 +99,7 @@
 				  tagsUpdating ||
 				  attachmentUploading ||
 				  descriptionSaving ||
+				  uploadingDescription ||
 				  commentSubmitting
 				? 'saving'
 				: 'saved'
@@ -416,7 +420,10 @@
 		}
 	}
 
-	async function handleAttachmentUpload(fileName: string, fileData: Uint8Array) {
+	async function handleAttachmentUpload(
+		fileName: string,
+		fileData: Uint8Array
+	): Promise<Attachment | undefined> {
 		if (!issue) {
 			return;
 		}
@@ -436,11 +443,73 @@
 			attachmentsError = null;
 			toast.success($t('issueDetail.attachmentUploaded') || 'Attachment uploaded');
 			onIssueUpdated?.();
+			return newAttachment;
 		} catch (e) {
 			console.error('Failed to upload attachment:', e);
 			toast.error($t('issueDetail.attachmentUploadError') || 'Failed to upload attachment');
+			return undefined;
 		} finally {
 			attachmentUploading = false;
+		}
+	}
+
+	async function handlePasteUpload(file: File): Promise<string | undefined> {
+		if (!file) return undefined;
+
+		return new Promise((resolve) => {
+			const reader = new FileReader();
+			reader.onload = async () => {
+				const arrayBuffer = reader.result as ArrayBuffer;
+				const uint8Array = new Uint8Array(arrayBuffer);
+				const attachment = await handleAttachmentUpload(file.name, uint8Array);
+				if (attachment) {
+					// Use the URL from the attachment
+					resolve(`![${file.name}](${attachment.url})`);
+				} else {
+					resolve(undefined);
+				}
+			};
+			reader.onerror = () => resolve(undefined);
+			reader.readAsArrayBuffer(file);
+		});
+	}
+
+	async function handleDescriptionPaste(e: ClipboardEvent) {
+		if (descriptionSaving || uploadingDescription || !isEditingDescription) return;
+
+		const items = e.clipboardData?.items;
+		if (!items) return;
+
+		for (const item of items) {
+			if (item.type.startsWith('image/')) {
+				const file = item.getAsFile();
+				if (!file) continue;
+
+				e.preventDefault();
+				uploadingDescription = true;
+
+				try {
+					const markdown = await handlePasteUpload(file);
+					if (markdown) {
+						const textarea = e.target as HTMLTextAreaElement;
+						const start = textarea.selectionStart;
+						const end = textarea.selectionEnd;
+						const before = descriptionDraft.substring(0, start);
+						const after = descriptionDraft.substring(end);
+
+						descriptionDraft = before + markdown + after;
+
+						await tick();
+						textarea.setSelectionRange(start + markdown.length, start + markdown.length);
+						debounceSaveDraft();
+					}
+				} catch (error) {
+					console.error('Failed to upload image:', error);
+				} finally {
+					uploadingDescription = false;
+				}
+				return;
+			}
 		}
 	}
 
@@ -669,6 +738,23 @@
 			}
 		);
 	}
+
+	async function handleShareIssue() {
+		if (!issue) {
+			return;
+		}
+
+		try {
+			const baseUrl = await invoke<string>(CMD_GET_TAIGA_BASE_URL);
+			const issueUrl = `${baseUrl}/project/${issue.project_slug}/issue/${issue.ref_number}`;
+
+			await navigator.clipboard.writeText(issueUrl);
+			toast.success($t('issueDetail.shareCopied') || 'Issue URL copied to clipboard');
+		} catch (e) {
+			console.error('Failed to copy issue URL:', e);
+			toast.error($t('issueDetail.shareError') || 'Failed to copy URL');
+		}
+	}
 </script>
 
 <Sheet.Root bind:open>
@@ -750,7 +836,8 @@
 									<textarea
 										value={descriptionDraft}
 										oninput={handleDescriptionInput}
-										disabled={descriptionSaving}
+										onpaste={handleDescriptionPaste}
+										disabled={descriptionSaving || uploadingDescription}
 										class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[150px] w-full resize-y rounded-lg border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 										rows={6}
 										placeholder={$t('issueDetail.noDescription') || 'No description provided'}
@@ -816,6 +903,7 @@
 								bind:commentText
 								submitting={commentSubmitting}
 								onSubmit={handleAddComment}
+								onUpload={handlePasteUpload}
 							/>
 						</div>
 					</div>
