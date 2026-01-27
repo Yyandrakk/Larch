@@ -3,6 +3,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { t } from 'svelte-i18n';
 	import { Bold, Italic, Code, Link, List, Eye, Edit3, Send, Loader2 } from '@lucide/svelte';
+	import { sanitizeHtml } from '$lib/security';
 
 	let {
 		value = $bindable(''),
@@ -260,7 +261,8 @@
 			class="prose prose-sm dark:prose-invert bg-muted/30 min-h-[100px] max-w-none rounded-lg border p-3"
 		>
 			{#if value.trim()}
-				{@html renderMarkdown(value)}
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+				{@html sanitizeHtml(renderMarkdown(value))}
 			{:else}
 				<span class="text-muted-foreground italic">
 					{$t('issueDetail.noContent') || 'Nothing to preview'}
