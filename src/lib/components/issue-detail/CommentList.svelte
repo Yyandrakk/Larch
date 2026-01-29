@@ -4,6 +4,7 @@
 	import { t } from 'svelte-i18n';
 	import MarkdownEditor from '$lib/components/common/MarkdownEditor.svelte';
 	import { Separator } from '$lib/components/ui/separator';
+	import { renderMarkdown } from '$lib/utils/markdown';
 
 	let {
 		comments,
@@ -126,12 +127,14 @@
 
 					<!-- Comment Body -->
 					<div class="mt-1 text-sm">
-						{#if comment.comment_html}
+						{#if comment.comment}
 							<div class="prose prose-sm dark:prose-invert max-w-none">
-								{@html comment.comment_html}
+								{@html renderMarkdown(comment.comment)}
 							</div>
-						{:else if comment.comment}
-							<p class="whitespace-pre-wrap">{comment.comment}</p>
+						{:else}
+							<p class="text-muted-foreground whitespace-pre-wrap italic">
+								{$t('issueDetail.noContent') || 'No content'}
+							</p>
 						{/if}
 					</div>
 				</div>

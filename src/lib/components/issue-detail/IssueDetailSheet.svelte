@@ -39,6 +39,7 @@
 	import { t } from 'svelte-i18n';
 	import { toast } from 'svelte-sonner';
 	import { MessageSquare, Edit3, X, Save, Loader2, ChevronRight } from '@lucide/svelte';
+	import { renderMarkdown } from '$lib/utils/markdown';
 	import CommentList from './CommentList.svelte';
 	import StatusChip from './StatusChip.svelte';
 	import IssueMetadataSidebar from './IssueMetadataSidebar.svelte';
@@ -791,13 +792,9 @@
 										</div>
 									</div>
 								</div>
-							{:else if issue.description_html}
-								<div class="prose prose-sm dark:prose-invert bg-card/50 max-w-none rounded-lg p-4">
-									{@html issue.description_html}
-								</div>
 							{:else if issue.description}
-								<div class="bg-card/50 rounded-lg p-4 text-sm whitespace-pre-wrap">
-									{issue.description}
+								<div class="prose prose-sm dark:prose-invert bg-card/50 max-w-none rounded-lg p-4">
+									{@html renderMarkdown(issue.description)}
 								</div>
 							{:else}
 								<p class="text-muted-foreground text-sm italic">
