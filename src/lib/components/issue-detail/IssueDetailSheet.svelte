@@ -43,6 +43,7 @@
 	import StatusChip from './StatusChip.svelte';
 	import IssueMetadataSidebar from './IssueMetadataSidebar.svelte';
 	import { setPendingCommit } from '$lib/stores/pendingClose';
+	import { sanitizeHtml } from '$lib/sanitize';
 
 	let {
 		issueId = $bindable<number | null>(null),
@@ -793,7 +794,8 @@
 								</div>
 							{:else if issue.description_html}
 								<div class="prose prose-sm dark:prose-invert bg-card/50 max-w-none rounded-lg p-4">
-									{@html issue.description_html}
+									<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+									{@html sanitizeHtml(issue.description_html)}
 								</div>
 							{:else if issue.description}
 								<div class="bg-card/50 rounded-lg p-4 text-sm whitespace-pre-wrap">
