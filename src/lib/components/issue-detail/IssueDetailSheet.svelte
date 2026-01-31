@@ -78,6 +78,7 @@
 	let commentText = $state('');
 	let error = $state<string | null>(null);
 	let hasConflict = $state(false);
+	let taigaBaseUrl = $state('');
 
 	let isEditingDescription = $state(false);
 	let descriptionDraft = $state('');
@@ -151,13 +152,15 @@
 		hasConflict = false;
 
 		try {
-			const [issueResult, historyResult] = await Promise.all([
+			const [issueResult, historyResult, baseUrlResult] = await Promise.all([
 				invoke<IssueDetail>(CMD_GET_ISSUE_DETAIL, { issueId: id }),
-				invoke<HistoryEntry[]>(CMD_GET_ISSUE_HISTORY, { issueId: id })
+				invoke<HistoryEntry[]>(CMD_GET_ISSUE_HISTORY, { issueId: id }),
+				invoke<string>(CMD_GET_TAIGA_BASE_URL)
 			]);
 
 			issue = issueResult;
 			history = historyResult;
+			taigaBaseUrl = baseUrlResult;
 
 			if (issue.project_id) {
 				try {
@@ -480,7 +483,8 @@
 		const items = e.clipboardData?.items;
 		if (!items) return;
 
-		for (const item of items) {
+		for (let i = 0; i < items.length; i++) {
+			const item = items[i];
 			if (item.type.startsWith('image/')) {
 				const file = item.getAsFile();
 				if (!file) continue;
@@ -740,13 +744,12 @@
 	}
 
 	async function handleShareIssue() {
-		if (!issue) {
+		if (!issue || !taigaBaseUrl) {
 			return;
 		}
 
 		try {
-			const baseUrl = await invoke<string>(CMD_GET_TAIGA_BASE_URL);
-			const issueUrl = `${baseUrl}/project/${issue.project_slug}/issue/${issue.ref_number}`;
+			const issueUrl = `${taigaBaseUrl}/project/${issue.project_slug}/issue/${issue.ref_number}`;
 
 			await navigator.clipboard.writeText(issueUrl);
 			toast.success($t('issueDetail.shareCopied') || 'Issue URL copied to clipboard');
