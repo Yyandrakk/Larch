@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/core';
+	import { writeText, readImage } from '@tauri-apps/plugin-clipboard-manager';
+	import { transformImageUrls } from '$lib/utils/image-auth';
 	import {
 		CMD_GET_ISSUE_DETAIL,
 		CMD_GET_ISSUE_HISTORY,
@@ -425,9 +427,16 @@
 
 	async function handleAttachmentUpload(
 		fileName: string,
-		fileData: Uint8Array
+		fileData: Uint8Array,
+		mimeType?: string
 	): Promise<Attachment | undefined> {
+		console.log('[Debug] handleAttachmentUpload called', {
+			fileName,
+			mimeType,
+			size: fileData.length
+		});
 		if (!issue) {
+			console.warn('[Debug] Upload skipped: Issue is null');
 			return;
 		}
 
@@ -435,12 +444,15 @@
 		hasConflict = false;
 
 		try {
+			console.log('[Debug] Invoking CMD_UPLOAD_ISSUE_ATTACHMENT');
 			const newAttachment = await invoke<Attachment>(CMD_UPLOAD_ISSUE_ATTACHMENT, {
 				projectId: issue.project_id,
 				issueId: issue.id,
 				fileName,
-				fileData: Array.from(fileData)
+				mimeType,
+				fileData
 			});
+			console.log('[Debug] Upload successful:', newAttachment);
 
 			attachments = [...attachments, newAttachment];
 			attachmentsError = null;
@@ -448,7 +460,7 @@
 			onIssueUpdated?.();
 			return newAttachment;
 		} catch (e) {
-			console.error('Failed to upload attachment:', e);
+			console.error('[Debug] Failed to upload attachment (invoke error):', e);
 			toast.error($t('issueDetail.attachmentUploadError') || 'Failed to upload attachment');
 			return undefined;
 		} finally {
@@ -457,64 +469,183 @@
 	}
 
 	async function handlePasteUpload(file: File): Promise<string | undefined> {
+		console.log('[Debug] handlePasteUpload called with file:', file.name, file.type, file.size);
 		if (!file) return undefined;
 
 		return new Promise((resolve) => {
 			const reader = new FileReader();
 			reader.onload = async () => {
+				console.log('[Debug] FileReader loaded');
 				const arrayBuffer = reader.result as ArrayBuffer;
 				const uint8Array = new Uint8Array(arrayBuffer);
-				const attachment = await handleAttachmentUpload(file.name, uint8Array);
+				const attachment = await handleAttachmentUpload(file.name, uint8Array, file.type);
 				if (attachment) {
+					console.log('[Debug] Attachment created, resolving markdown URL');
 					// Use the URL from the attachment
 					resolve(`![${file.name}](${attachment.url})`);
 				} else {
+					console.warn('[Debug] Attachment upload failed, resolving undefined');
 					resolve(undefined);
 				}
 			};
-			reader.onerror = () => resolve(undefined);
+			reader.onerror = (e) => {
+				console.error('[Debug] FileReader error:', e);
+				resolve(undefined);
+			};
 			reader.readAsArrayBuffer(file);
 		});
 	}
 
-	async function handleDescriptionPaste(e: ClipboardEvent) {
-		if (descriptionSaving || uploadingDescription || !isEditingDescription) return;
+	async function checkSystemClipboard(e: ClipboardEvent) {
+		console.log('[Debug] Checking system clipboard via Rust...');
+		try {
+			const image = await readImage();
+			const size = await image.size();
+			const rgba = await image.rgba();
+			console.log('[Debug] readImage returned image of size:', size);
 
-		const items = e.clipboardData?.items;
-		if (!items) return;
+			const canvas = document.createElement('canvas');
+			canvas.width = size.width;
+			canvas.height = size.height;
+			const ctx = canvas.getContext('2d');
+			if (!ctx) return;
 
-		for (let i = 0; i < items.length; i++) {
-			const item = items[i];
-			if (item.type.startsWith('image/')) {
-				const file = item.getAsFile();
-				if (!file) continue;
+			const imageData = new ImageData(new Uint8ClampedArray(rgba), size.width, size.height);
+			ctx.putImageData(imageData, 0, 0);
 
-				e.preventDefault();
-				uploadingDescription = true;
+			canvas.toBlob(async (blob) => {
+				if (blob) {
+					const file = new File([blob], 'pasted_image.png', { type: 'image/png' });
+					console.log('[Debug] Created File from system clipboard:', file);
 
-				try {
-					const markdown = await handlePasteUpload(file);
-					if (markdown) {
-						const textarea = e.target as HTMLTextAreaElement;
-						const start = textarea.selectionStart;
-						const end = textarea.selectionEnd;
-						const before = descriptionDraft.substring(0, start);
-						const after = descriptionDraft.substring(end);
+					const textarea = e.target as HTMLTextAreaElement;
+					const start = textarea.selectionStart;
+					const end = textarea.selectionEnd;
 
-						descriptionDraft = before + markdown + after;
+					e.preventDefault();
+					uploadingDescription = true;
 
-						await tick();
-						textarea.setSelectionRange(start + markdown.length, start + markdown.length);
-						debounceSaveDraft();
+					try {
+						const markdown = await handlePasteUpload(file);
+						if (markdown) {
+							const before = descriptionDraft.substring(0, start);
+							const after = descriptionDraft.substring(end);
+
+							descriptionDraft = before + markdown + after;
+
+							await tick();
+							textarea.setSelectionRange(start + markdown.length, start + markdown.length);
+							debounceSaveDraft();
+						}
+					} catch (error) {
+						console.error('[Debug] Failed to upload image (system fallback):', error);
+					} finally {
+						uploadingDescription = false;
 					}
-				} catch (error) {
-					console.error('Failed to upload image:', error);
-				} finally {
-					uploadingDescription = false;
 				}
-				return;
+			}, 'image/png');
+		} catch (err) {
+			console.log('[Debug] System clipboard read failed or empty:', err);
+		}
+	}
+
+	async function handleDescriptionPaste(e: ClipboardEvent) {
+		console.log('[Debug] Description Paste Event:', {
+			types: e.clipboardData?.types,
+			files: e.clipboardData?.files.length,
+			items: e.clipboardData?.items.length
+		});
+
+		if (descriptionSaving || uploadingDescription || !isEditingDescription) {
+			console.log('[Debug] Description paste ignored (busy or not editing)');
+			return;
+		}
+
+		// Try clipboardData.files first (more reliable across browsers)
+		const files = e.clipboardData?.files;
+		if (files && files.length > 0) {
+			console.log('[Debug] Processing description paste as FileList');
+			for (let i = 0; i < files.length; i++) {
+				const file = files[i];
+				if (file.type.startsWith('image/')) {
+					const textarea = e.target as HTMLTextAreaElement;
+					const start = textarea.selectionStart;
+					const end = textarea.selectionEnd;
+
+					e.preventDefault();
+					uploadingDescription = true;
+					console.log('[Debug] Uploading description image:', file.name);
+
+					try {
+						const markdown = await handlePasteUpload(file);
+						console.log('[Debug] Description upload result:', markdown);
+
+						if (markdown) {
+							const before = descriptionDraft.substring(0, start);
+							const after = descriptionDraft.substring(end);
+
+							descriptionDraft = before + markdown + after;
+
+							await tick();
+							textarea.setSelectionRange(start + markdown.length, start + markdown.length);
+							debounceSaveDraft();
+						}
+					} catch (error) {
+						console.error('[Debug] Failed to upload image:', error);
+					} finally {
+						uploadingDescription = false;
+					}
+					return;
+				}
 			}
 		}
+
+		// Fallback to clipboardData.items for browsers that use DataTransferItemList
+		const items = e.clipboardData?.items;
+		if (items) {
+			console.log('[Debug] Processing description paste as Items');
+			for (let i = 0; i < items.length; i++) {
+				const item = items[i];
+				if (item.type.startsWith('image/')) {
+					const file = item.getAsFile();
+					if (!file) {
+						console.warn('[Debug] Item getAsFile failed');
+						continue;
+					}
+
+					console.log('[Debug] Extracted file from item:', file.name);
+
+					const textarea = e.target as HTMLTextAreaElement;
+					const start = textarea.selectionStart;
+					const end = textarea.selectionEnd;
+
+					e.preventDefault();
+					uploadingDescription = true;
+
+					try {
+						const markdown = await handlePasteUpload(file);
+						if (markdown) {
+							const before = descriptionDraft.substring(0, start);
+							const after = descriptionDraft.substring(end);
+
+							descriptionDraft = before + markdown + after;
+
+							await tick();
+							textarea.setSelectionRange(start + markdown.length, start + markdown.length);
+							debounceSaveDraft();
+						}
+					} catch (error) {
+						console.error('[Debug] Failed to upload image:', error);
+					} finally {
+						uploadingDescription = false;
+					}
+					return;
+				}
+			}
+		}
+
+		console.log('[Debug] No image found in description paste, trying system clipboard fallback...');
+		await checkSystemClipboard(e);
 	}
 
 	async function handleAttachmentDelete(attachmentId: number) {
@@ -751,7 +882,7 @@
 		try {
 			const issueUrl = `${taigaBaseUrl}/project/${issue.project_slug}/issue/${issue.ref_number}`;
 
-			await navigator.clipboard.writeText(issueUrl);
+			await writeText(issueUrl);
 			toast.success($t('issueDetail.shareCopied') || 'Issue URL copied to clipboard');
 		} catch (e) {
 			console.error('Failed to copy issue URL:', e);
@@ -894,7 +1025,7 @@
 								</div>
 							{:else if issue.description_html}
 								<div class="prose prose-sm dark:prose-invert bg-card/50 max-w-none rounded-lg p-4">
-									{@html issue.description_html}
+									{@html transformImageUrls(issue.description_html)}
 								</div>
 							{:else if issue.description}
 								<div class="bg-card/50 rounded-lg p-4 text-sm whitespace-pre-wrap">

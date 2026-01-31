@@ -4,6 +4,7 @@
 	import { t } from 'svelte-i18n';
 	import MarkdownEditor from '$lib/components/common/MarkdownEditor.svelte';
 	import { Separator } from '$lib/components/ui/separator';
+	import { transformImageUrls } from '$lib/utils/image-auth';
 
 	let {
 		comments,
@@ -131,7 +132,7 @@
 					<div class="mt-1 text-sm">
 						{#if comment.comment_html}
 							<div class="prose prose-sm dark:prose-invert max-w-none">
-								{@html comment.comment_html}
+								{@html transformImageUrls(comment.comment_html)}
 							</div>
 						{:else if comment.comment}
 							<p class="whitespace-pre-wrap">{comment.comment}</p>

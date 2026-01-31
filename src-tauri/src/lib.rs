@@ -47,13 +47,42 @@ pub fn run() {
 
             Ok(())
         })
+        .register_asynchronous_uri_scheme_protocol("taiga-auth", move |ctx, request, responder| {
+            let app_handle = ctx.app_handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let uri = request.uri().to_string();
+                let target_url = uri.replace("taiga-auth://", "https://");
+                
+                let client = app_handle.state::<taiga_client::TaigaClient>();
+                let token_result = crate::services::credentials::get_api_token();
+                
+                let token = token_result.ok();
+                
+                match client.get_raw_resource(&target_url, token.as_ref()).await {
+                    Ok((bytes, mime)) => {
+                        let response = tauri::http::Response::builder()
+                            .header("Access-Control-Allow-Origin", "*")
+                            .header("Content-Type", mime)
+                            .body(bytes)
+                            .unwrap();
+                        responder.respond(response);
+                    },
+                    Err(e) => {
+                        log::error!("Failed to proxy image {}: {}", target_url, e);
+                        responder.respond(tauri::http::Response::builder().status(404).body(vec![]).unwrap());
+                    }
+                }
+            });
+        })
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .invoke_handler(tauri::generate_handler![
             commands::auth_commands::login,
             commands::auth_commands::has_api_token,
             commands::auth_commands::logout,
             commands::auth_commands::refresh_token,
             commands::auth_commands::get_taiga_base_url,
+            commands::auth_commands::get_taiga_api_url,
             commands::user_commands::get_me,
             commands::project_commands::get_projects,
             commands::project_commands::list_issues,

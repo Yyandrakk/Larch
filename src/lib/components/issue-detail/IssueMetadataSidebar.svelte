@@ -87,7 +87,7 @@
 		onSeverityChange?: (severityId: number) => void;
 		onTypeChange?: (typeId: number) => void;
 		onTagsChange?: (tags: Tag[]) => void;
-		onAttachmentUpload?: (fileName: string, fileData: Uint8Array) => void;
+		onAttachmentUpload?: (fileName: string, fileData: Uint8Array, mimeType?: string) => void;
 		onAttachmentDelete?: (attachmentId: number) => void;
 		onRetryLoadAttachments?: () => void;
 	} = $props();

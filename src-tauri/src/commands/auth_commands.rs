@@ -81,3 +81,14 @@ pub async fn get_taiga_base_url(
 
     Ok(base_url)
 }
+
+#[tauri::command]
+pub async fn get_taiga_api_url(
+    repo: tauri::State<'_, crate::repositories::SqliteRepository>,
+) -> Result<String> {
+    let api_url = repo
+        .get_config("taiga_api_url")
+        .await?
+        .ok_or_else(|| crate::error::Error::InvalidInput("Taiga API URL not found".to_string()))?;
+    Ok(api_url)
+}

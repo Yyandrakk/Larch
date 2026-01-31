@@ -483,25 +483,35 @@ impl TaigaClient {
         project_id: i64,
         issue_id: i64,
         file_name: String,
+        mime_type: Option<String>,
         file_data: Vec<u8>,
     ) -> Result<models::AttachmentDto, TaigaClientError> {
         let url = self.build_url("issues/attachments")?;
         log::info!(
-            "Uploading attachment {} for issue {} in project {}",
+            "[Debug] TaigaClient: Uploading attachment {} (type: {:?}) for issue {} in project {} to {}",
             file_name,
+            mime_type,
             issue_id,
-            project_id
+            project_id,
+            url
         );
+
+        let mime = mime_type.unwrap_or_else(|| {
+            log::warn!("[Debug] No mime_type provided, defaulting to application/octet-stream");
+            "application/octet-stream".to_string()
+        });
 
         let file_part = multipart::Part::bytes(file_data)
             .file_name(file_name)
-            .mime_str("application/octet-stream")
+            .mime_str(&mime)
             .unwrap();
 
         let form = multipart::Form::new()
             .text("object_id", issue_id.to_string())
             .text("project", project_id.to_string())
             .part("attached_file", file_part);
+
+        log::info!("[Debug] Sending multipart request...");
 
         let response = self
             .client
@@ -511,16 +521,17 @@ impl TaigaClient {
             .send()
             .await?;
 
-        log::info!("Upload attachment response status: {}", response.status());
+        log::info!("[Debug] Upload attachment response status: {}", response.status());
 
         if response.status().is_success() {
             let attachment = response.json::<models::AttachmentDto>().await?;
+            log::info!("[Debug] Upload successful. Attachment ID: {}", attachment.id);
             Ok(attachment)
         } else {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             log::error!(
-                "Upload attachment failed. Status: {}, Body: {}",
+                "[Debug] Upload attachment failed. Status: {}, Body: {}",
                 status,
                 body
             );
@@ -570,6 +581,48 @@ impl TaigaClient {
                 _ => TaigaClientError::AuthFailed(status),
             };
             Err(err)
+        }
+    }
+
+    pub async fn get_raw_resource(
+        &self,
+        url: &str,
+        token: Option<&Secret<String>>,
+    ) -> Result<(Vec<u8>, String), TaigaClientError> {
+        let mut req = self.client.get(url);
+        
+        // Safety check: Only attach token if the request URL matches our API host
+        let should_attach_token = if let Ok(parsed_url) = Url::parse(url) {
+            match (parsed_url.host_str(), self.api_base_url.host_str()) {
+                (Some(target_host), Some(api_host)) => {
+                    // Check if hosts match or are subdomains of each other
+                    target_host.ends_with(api_host) || api_host.ends_with(target_host)
+                },
+                _ => false,
+            }
+        } else {
+            false
+        };
+
+        if let Some(t) = token {
+            if should_attach_token {
+                req = req.bearer_auth(t.expose_secret());
+            }
+        }
+
+        let response = req.send().await?;
+
+        if response.status().is_success() {
+            let content_type = response
+                .headers()
+                .get(reqwest::header::CONTENT_TYPE)
+                .and_then(|h| h.to_str().ok())
+                .unwrap_or("application/octet-stream")
+                .to_string();
+            let bytes = response.bytes().await?.to_vec();
+            Ok((bytes, content_type))
+        } else {
+            Err(TaigaClientError::AuthFailed(response.status()))
         }
     }
 
