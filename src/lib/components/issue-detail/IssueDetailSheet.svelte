@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/core';
+	import { writeText, readImage } from '@tauri-apps/plugin-clipboard-manager';
+	import { transformImageUrls } from '$lib/utils/image-auth';
 	import {
 		CMD_GET_ISSUE_DETAIL,
 		CMD_GET_ISSUE_HISTORY,
@@ -17,7 +19,8 @@
 		CMD_UPDATE_ISSUE_TAGS,
 		CMD_UPLOAD_ISSUE_ATTACHMENT,
 		CMD_DELETE_ISSUE_ATTACHMENT,
-		CMD_GET_ISSUE_ATTACHMENTS
+		CMD_GET_ISSUE_ATTACHMENTS,
+		CMD_GET_TAIGA_BASE_URL
 	} from '$lib/commands.svelte';
 	import type {
 		IssueDetail,
@@ -38,11 +41,12 @@
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { t } from 'svelte-i18n';
 	import { toast } from 'svelte-sonner';
-	import { MessageSquare, Edit3, X, Save, Loader2, ChevronRight } from '@lucide/svelte';
+	import { MessageSquare, Edit3, X, Save, Loader2, ChevronRight, Share2 } from '@lucide/svelte';
 	import CommentList from './CommentList.svelte';
 	import StatusChip from './StatusChip.svelte';
 	import IssueMetadataSidebar from './IssueMetadataSidebar.svelte';
 	import { setPendingCommit } from '$lib/stores/pendingClose';
+	import { tick } from 'svelte';
 
 	let {
 		issueId = $bindable<number | null>(null),
@@ -76,10 +80,12 @@
 	let commentText = $state('');
 	let error = $state<string | null>(null);
 	let hasConflict = $state(false);
+	let taigaBaseUrl = $state('');
 
 	let isEditingDescription = $state(false);
 	let descriptionDraft = $state('');
 	let descriptionSaving = $state(false);
+	let uploadingDescription = $state(false);
 	let hasDraft = $state(false);
 	let draftSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 	const DRAFT_DEBOUNCE_MS = 2000;
@@ -96,6 +102,7 @@
 				  tagsUpdating ||
 				  attachmentUploading ||
 				  descriptionSaving ||
+				  uploadingDescription ||
 				  commentSubmitting
 				? 'saving'
 				: 'saved'
@@ -147,13 +154,15 @@
 		hasConflict = false;
 
 		try {
-			const [issueResult, historyResult] = await Promise.all([
+			const [issueResult, historyResult, baseUrlResult] = await Promise.all([
 				invoke<IssueDetail>(CMD_GET_ISSUE_DETAIL, { issueId: id }),
-				invoke<HistoryEntry[]>(CMD_GET_ISSUE_HISTORY, { issueId: id })
+				invoke<HistoryEntry[]>(CMD_GET_ISSUE_HISTORY, { issueId: id }),
+				invoke<string>(CMD_GET_TAIGA_BASE_URL)
 			]);
 
 			issue = issueResult;
 			history = historyResult;
+			taigaBaseUrl = baseUrlResult;
 
 			if (issue.project_id) {
 				try {
@@ -416,8 +425,18 @@
 		}
 	}
 
-	async function handleAttachmentUpload(fileName: string, fileData: Uint8Array) {
+	async function handleAttachmentUpload(
+		fileName: string,
+		fileData: Uint8Array,
+		mimeType?: string
+	): Promise<Attachment | undefined> {
+		console.log('[Debug] handleAttachmentUpload called', {
+			fileName,
+			mimeType,
+			size: fileData.length
+		});
 		if (!issue) {
+			console.warn('[Debug] Upload skipped: Issue is null');
 			return;
 		}
 
@@ -425,23 +444,208 @@
 		hasConflict = false;
 
 		try {
+			console.log('[Debug] Invoking CMD_UPLOAD_ISSUE_ATTACHMENT');
 			const newAttachment = await invoke<Attachment>(CMD_UPLOAD_ISSUE_ATTACHMENT, {
 				projectId: issue.project_id,
 				issueId: issue.id,
 				fileName,
-				fileData: Array.from(fileData)
+				mimeType,
+				fileData
 			});
+			console.log('[Debug] Upload successful:', newAttachment);
 
 			attachments = [...attachments, newAttachment];
 			attachmentsError = null;
 			toast.success($t('issueDetail.attachmentUploaded') || 'Attachment uploaded');
 			onIssueUpdated?.();
+			return newAttachment;
 		} catch (e) {
-			console.error('Failed to upload attachment:', e);
+			console.error('[Debug] Failed to upload attachment (invoke error):', e);
 			toast.error($t('issueDetail.attachmentUploadError') || 'Failed to upload attachment');
+			return undefined;
 		} finally {
 			attachmentUploading = false;
 		}
+	}
+
+	async function handlePasteUpload(file: File): Promise<string | undefined> {
+		console.log('[Debug] handlePasteUpload called with file:', file.name, file.type, file.size);
+		if (!file) return undefined;
+
+		return new Promise((resolve) => {
+			const reader = new FileReader();
+			reader.onload = async () => {
+				console.log('[Debug] FileReader loaded');
+				const arrayBuffer = reader.result as ArrayBuffer;
+				const uint8Array = new Uint8Array(arrayBuffer);
+				const attachment = await handleAttachmentUpload(file.name, uint8Array, file.type);
+				if (attachment) {
+					console.log('[Debug] Attachment created, resolving markdown URL');
+					// Use the URL from the attachment
+					resolve(`![${file.name}](${attachment.url})`);
+				} else {
+					console.warn('[Debug] Attachment upload failed, resolving undefined');
+					resolve(undefined);
+				}
+			};
+			reader.onerror = (e) => {
+				console.error('[Debug] FileReader error:', e);
+				resolve(undefined);
+			};
+			reader.readAsArrayBuffer(file);
+		});
+	}
+
+	async function checkSystemClipboard(e: ClipboardEvent) {
+		console.log('[Debug] Checking system clipboard via Rust...');
+		try {
+			const image = await readImage();
+			const size = await image.size();
+			const rgba = await image.rgba();
+			console.log('[Debug] readImage returned image of size:', size);
+
+			const canvas = document.createElement('canvas');
+			canvas.width = size.width;
+			canvas.height = size.height;
+			const ctx = canvas.getContext('2d');
+			if (!ctx) return;
+
+			const imageData = new ImageData(new Uint8ClampedArray(rgba), size.width, size.height);
+			ctx.putImageData(imageData, 0, 0);
+
+			canvas.toBlob(async (blob) => {
+				if (blob) {
+					const file = new File([blob], 'pasted_image.png', { type: 'image/png' });
+					console.log('[Debug] Created File from system clipboard:', file);
+
+					const textarea = e.target as HTMLTextAreaElement;
+					const start = textarea.selectionStart;
+					const end = textarea.selectionEnd;
+
+					e.preventDefault();
+					uploadingDescription = true;
+
+					try {
+						const markdown = await handlePasteUpload(file);
+						if (markdown) {
+							const before = descriptionDraft.substring(0, start);
+							const after = descriptionDraft.substring(end);
+
+							descriptionDraft = before + markdown + after;
+
+							await tick();
+							textarea.setSelectionRange(start + markdown.length, start + markdown.length);
+							debounceSaveDraft();
+						}
+					} catch (error) {
+						console.error('[Debug] Failed to upload image (system fallback):', error);
+					} finally {
+						uploadingDescription = false;
+					}
+				}
+			}, 'image/png');
+		} catch (err) {
+			console.log('[Debug] System clipboard read failed or empty:', err);
+		}
+	}
+
+	async function handleDescriptionPaste(e: ClipboardEvent) {
+		console.log('[Debug] Description Paste Event:', {
+			types: e.clipboardData?.types,
+			files: e.clipboardData?.files.length,
+			items: e.clipboardData?.items.length
+		});
+
+		if (descriptionSaving || uploadingDescription || !isEditingDescription) {
+			console.log('[Debug] Description paste ignored (busy or not editing)');
+			return;
+		}
+
+		// Try clipboardData.files first (more reliable across browsers)
+		const files = e.clipboardData?.files;
+		if (files && files.length > 0) {
+			console.log('[Debug] Processing description paste as FileList');
+			for (let i = 0; i < files.length; i++) {
+				const file = files[i];
+				if (file.type.startsWith('image/')) {
+					const textarea = e.target as HTMLTextAreaElement;
+					const start = textarea.selectionStart;
+					const end = textarea.selectionEnd;
+
+					e.preventDefault();
+					uploadingDescription = true;
+					console.log('[Debug] Uploading description image:', file.name);
+
+					try {
+						const markdown = await handlePasteUpload(file);
+						console.log('[Debug] Description upload result:', markdown);
+
+						if (markdown) {
+							const before = descriptionDraft.substring(0, start);
+							const after = descriptionDraft.substring(end);
+
+							descriptionDraft = before + markdown + after;
+
+							await tick();
+							textarea.setSelectionRange(start + markdown.length, start + markdown.length);
+							debounceSaveDraft();
+						}
+					} catch (error) {
+						console.error('[Debug] Failed to upload image:', error);
+					} finally {
+						uploadingDescription = false;
+					}
+					return;
+				}
+			}
+		}
+
+		// Fallback to clipboardData.items for browsers that use DataTransferItemList
+		const items = e.clipboardData?.items;
+		if (items) {
+			console.log('[Debug] Processing description paste as Items');
+			for (let i = 0; i < items.length; i++) {
+				const item = items[i];
+				if (item.type.startsWith('image/')) {
+					const file = item.getAsFile();
+					if (!file) {
+						console.warn('[Debug] Item getAsFile failed');
+						continue;
+					}
+
+					console.log('[Debug] Extracted file from item:', file.name);
+
+					const textarea = e.target as HTMLTextAreaElement;
+					const start = textarea.selectionStart;
+					const end = textarea.selectionEnd;
+
+					e.preventDefault();
+					uploadingDescription = true;
+
+					try {
+						const markdown = await handlePasteUpload(file);
+						if (markdown) {
+							const before = descriptionDraft.substring(0, start);
+							const after = descriptionDraft.substring(end);
+
+							descriptionDraft = before + markdown + after;
+
+							await tick();
+							textarea.setSelectionRange(start + markdown.length, start + markdown.length);
+							debounceSaveDraft();
+						}
+					} catch (error) {
+						console.error('[Debug] Failed to upload image:', error);
+					} finally {
+						uploadingDescription = false;
+					}
+					return;
+				}
+			}
+		}
+
+		console.log('[Debug] No image found in description paste, trying system clipboard fallback...');
+		await checkSystemClipboard(e);
 	}
 
 	async function handleAttachmentDelete(attachmentId: number) {
@@ -669,6 +873,22 @@
 			}
 		);
 	}
+
+	async function handleShareIssue() {
+		if (!issue || !taigaBaseUrl) {
+			return;
+		}
+
+		try {
+			const issueUrl = `${taigaBaseUrl}/project/${issue.project_slug}/issue/${issue.ref_number}`;
+
+			await writeText(issueUrl);
+			toast.success($t('issueDetail.shareCopied') || 'Issue URL copied to clipboard');
+		} catch (e) {
+			console.error('Failed to copy issue URL:', e);
+			toast.error($t('issueDetail.shareError') || 'Failed to copy URL');
+		}
+	}
 </script>
 
 <Sheet.Root bind:open>
@@ -709,7 +929,18 @@
 							{issue.is_closed ? '✓ Closed' : '● Open'}
 						</Badge>
 					</div>
-					<StatusChip status={saveStatus} onRefresh={handleReload} />
+					<div class="flex items-center gap-2">
+						<StatusChip status={saveStatus} onRefresh={handleReload} />
+						<Button
+							variant="ghost"
+							size="icon"
+							class="h-8 w-8"
+							onclick={handleShareIssue}
+							title={$t('issueDetail.share') || 'Share'}
+						>
+							<Share2 class="h-4 w-4" />
+						</Button>
+					</div>
 				</div>
 				<Sheet.Title class="text-xl leading-tight font-semibold">
 					{issue.subject}
@@ -750,7 +981,8 @@
 									<textarea
 										value={descriptionDraft}
 										oninput={handleDescriptionInput}
-										disabled={descriptionSaving}
+										onpaste={handleDescriptionPaste}
+										disabled={descriptionSaving || uploadingDescription}
 										class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[150px] w-full resize-y rounded-lg border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 										rows={6}
 										placeholder={$t('issueDetail.noDescription') || 'No description provided'}
@@ -793,7 +1025,7 @@
 								</div>
 							{:else if issue.description_html}
 								<div class="prose prose-sm dark:prose-invert bg-card/50 max-w-none rounded-lg p-4">
-									{@html issue.description_html}
+									{@html transformImageUrls(issue.description_html)}
 								</div>
 							{:else if issue.description}
 								<div class="bg-card/50 rounded-lg p-4 text-sm whitespace-pre-wrap">
@@ -816,6 +1048,7 @@
 								bind:commentText
 								submitting={commentSubmitting}
 								onSubmit={handleAddComment}
+								onUpload={handlePasteUpload}
 							/>
 						</div>
 					</div>

@@ -4,17 +4,20 @@
 	import { t } from 'svelte-i18n';
 	import MarkdownEditor from '$lib/components/common/MarkdownEditor.svelte';
 	import { Separator } from '$lib/components/ui/separator';
+	import { transformImageUrls } from '$lib/utils/image-auth';
 
 	let {
 		comments,
 		commentText = $bindable(''),
 		submitting = false,
-		onSubmit
+		onSubmit,
+		onUpload
 	}: {
 		comments: HistoryEntry[];
 		commentText?: string;
 		submitting?: boolean;
 		onSubmit?: (text: string) => void;
+		onUpload?: (file: File) => Promise<string | undefined>;
 	} = $props();
 
 	function getInitials(name: string): string {
@@ -85,6 +88,7 @@
 			disabled={false}
 			{submitting}
 			onSubmit={handleSubmit}
+			{onUpload}
 		/>
 	</div>
 	<Separator class="my-4" />
@@ -128,7 +132,7 @@
 					<div class="mt-1 text-sm">
 						{#if comment.comment_html}
 							<div class="prose prose-sm dark:prose-invert max-w-none">
-								{@html comment.comment_html}
+								{@html transformImageUrls(comment.comment_html)}
 							</div>
 						{:else if comment.comment}
 							<p class="whitespace-pre-wrap">{comment.comment}</p>

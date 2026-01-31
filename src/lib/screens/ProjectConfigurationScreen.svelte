@@ -96,6 +96,17 @@
 	function getSlugAbbrev(slug: string): string {
 		return slug.slice(0, 8).toUpperCase();
 	}
+
+	function selectAll() {
+		const visibleIds = filteredProjects.map((p) => p.id);
+		const newSelection = new Set([...selectedProjectIds, ...visibleIds]);
+		selectedProjectIds = Array.from(newSelection);
+	}
+
+	function deselectAll() {
+		const visibleIds = new Set(filteredProjects.map((p) => p.id));
+		selectedProjectIds = selectedProjectIds.filter((id) => !visibleIds.has(id));
+	}
 </script>
 
 <div class="flex-1 overflow-y-auto px-8 py-8 pb-28">
@@ -122,6 +133,20 @@
 					bind:value={searchQuery}
 					class="w-full rounded-lg border-none bg-transparent p-2 pl-10 text-sm text-white placeholder-[#93a9c8] focus:ring-0"
 				/>
+			</div>
+			<div class="flex items-center gap-1 border-l border-[#243347] pl-2">
+				<button
+					onclick={selectAll}
+					class="rounded-lg px-3 py-1.5 text-xs font-medium text-[#93a9c8] transition-colors hover:bg-[#243347] hover:text-white"
+				>
+					{$t('projects.selectAll')}
+				</button>
+				<button
+					onclick={deselectAll}
+					class="rounded-lg px-3 py-1.5 text-xs font-medium text-[#93a9c8] transition-colors hover:bg-[#243347] hover:text-white"
+				>
+					{$t('projects.deselectAll')}
+				</button>
 			</div>
 		</div>
 

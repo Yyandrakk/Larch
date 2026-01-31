@@ -9,9 +9,10 @@
 	import DashboardScreen from '$lib/screens/DashboardScreen.svelte';
 	import { AppShell } from '$lib/components/layout';
 	import { Toaster, toast } from 'svelte-sonner';
-	import { CMD_FORCE_CLOSE_APP, CMD_GET_ME } from '$lib/commands.svelte';
+	import { CMD_FORCE_CLOSE_APP, CMD_GET_ME, CMD_GET_TAIGA_API_URL } from '$lib/commands.svelte';
 	import { hasPendingCommit, tryCommitPending } from '$lib/stores/pendingClose';
 	import { setCurrentUser, clearCurrentUser } from '$lib/stores/user.svelte';
+	import { setApiUrl } from '$lib/stores/config.svelte';
 	import { setSessionExpiredHandler } from '$lib/services/api';
 	import type { User } from '$lib/types';
 
@@ -46,6 +47,10 @@
 				const hasToken = await invoke<boolean>('has_api_token');
 				if (hasToken) {
 					try {
+						// Fetch API URL first so image rendering works
+						const apiUrl = await invoke<string>(CMD_GET_TAIGA_API_URL);
+						setApiUrl(apiUrl);
+
 						const user = await invoke<User>(CMD_GET_ME);
 						setCurrentUser(user);
 						const selectedIds = await invoke<number[]>('get_selected_projects');

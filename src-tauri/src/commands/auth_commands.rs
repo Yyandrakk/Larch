@@ -56,3 +56,39 @@ pub async fn refresh_token(client: tauri::State<'_, TaigaClient>) -> Result<()> 
     log::info!("Token refreshed successfully");
     Ok(())
 }
+
+#[tauri::command]
+pub async fn get_taiga_base_url(
+    repo: tauri::State<'_, crate::repositories::SqliteRepository>,
+) -> Result<String> {
+    let api_url = repo
+        .get_config("taiga_api_url")
+        .await?
+        .ok_or_else(|| crate::error::Error::InvalidInput("Taiga API URL not found".to_string()))?;
+
+    // Transform API URL to web URL
+    // Cloud: https://api.taiga.io -> https://tree.taiga.io
+    // Self-hosted: https://taiga.example.com/api/v1 -> https://taiga.example.com
+    let base_url = if api_url.contains("api.taiga.io") {
+        "https://tree.taiga.io".to_string()
+    } else {
+        // Strip /api/v1 suffix if present
+        api_url
+            .trim_end_matches("/api/v1")
+            .trim_end_matches('/')
+            .to_string()
+    };
+
+    Ok(base_url)
+}
+
+#[tauri::command]
+pub async fn get_taiga_api_url(
+    repo: tauri::State<'_, crate::repositories::SqliteRepository>,
+) -> Result<String> {
+    let api_url = repo
+        .get_config("taiga_api_url")
+        .await?
+        .ok_or_else(|| crate::error::Error::InvalidInput("Taiga API URL not found".to_string()))?;
+    Ok(api_url)
+}

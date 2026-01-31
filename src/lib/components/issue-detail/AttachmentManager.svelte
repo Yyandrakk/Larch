@@ -27,7 +27,7 @@
 		attachmentsError?: string | null;
 		uploading?: boolean;
 		disabled?: boolean;
-		onUpload?: (fileName: string, fileData: Uint8Array) => void;
+		onUpload?: (fileName: string, fileData: Uint8Array, mimeType?: string) => void;
 		onDelete?: (attachmentId: number) => void;
 		onRetry?: () => void;
 	} = $props();
@@ -45,7 +45,7 @@
 		reader.onload = () => {
 			const arrayBuffer = reader.result as ArrayBuffer;
 			const uint8Array = new Uint8Array(arrayBuffer);
-			onUpload(file.name, uint8Array);
+			onUpload(file.name, uint8Array, file.type);
 		};
 		reader.readAsArrayBuffer(file);
 

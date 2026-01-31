@@ -1,6 +1,6 @@
 {
 	"name": "larch-app",
-	"version": "2.0.0-1",
+	"version": "2.0.0",
 	"private": true,
 	"description": "",
 	"author": {
@@ -44,6 +44,7 @@
 		"@hypothesi/tauri-plugin-mcp-bridge": "^0.6.4",
 		"@tailwindcss/vite": "^4.1.18",
 		"@tauri-apps/api": "^2.9.1",
+		"@tauri-apps/plugin-clipboard-manager": "^2.3.2",
 		"@tauri-apps/plugin-opener": "^2.5.3",
 		"@types/node": "^25.0.3",
 		"clsx": "^2.1.1",
