@@ -46,3 +46,4 @@ export const CMD_UPDATE_VIEW = 'update_view';
 export const CMD_DELETE_VIEW = 'delete_view';
 export const CMD_SWITCH_VIEW = 'switch_view';
 export const CMD_SET_DEFAULT_VIEW = 'set_default_view';
+export const CMD_SANITIZE_VIEWS = 'sanitize_views';

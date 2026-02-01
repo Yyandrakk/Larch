@@ -94,7 +94,7 @@ export interface FilterObject {
 }
 
 export interface SavedView {
-	id: string;
+	id: number;
 	name: string;
 	filter_data: string;
 	is_system: boolean;

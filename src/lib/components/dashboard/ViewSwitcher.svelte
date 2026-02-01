@@ -15,8 +15,8 @@
 		views: SavedView[];
 		currentView: SavedView | null;
 		isDirty: boolean;
-		onSelectView: (id: string) => void;
-		onDeleteView?: (id: string) => void;
+		onSelectView: (id: number) => void;
+		onDeleteView?: (id: number) => void;
 	} = $props();
 
 	let sortedViews = $derived(
