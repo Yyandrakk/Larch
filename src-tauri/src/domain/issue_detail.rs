@@ -114,7 +114,9 @@ pub struct Comment {
 #[derive(Debug, Clone, Serialize)]
 pub struct FieldChange {
     pub field: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub old_value: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub new_value: Option<String>,
 }
 

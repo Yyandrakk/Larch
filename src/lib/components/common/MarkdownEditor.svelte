@@ -112,15 +112,12 @@
 	// ============================================================================
 
 	async function checkSystemClipboard(e: ClipboardEvent) {
-		console.log('[Debug] Checking system clipboard via Rust...');
 		try {
 			// Check for image in system clipboard (bypassing WebView restrictions)
 			const image = await readImage();
 			// Tauri v2 Image API uses async methods for properties
 			const size = await image.size();
 			const rgba = await image.rgba();
-
-			console.log('[Debug] readImage returned image of size:', size);
 
 			const canvas = document.createElement('canvas');
 			canvas.width = size.width;
@@ -131,96 +128,63 @@
 			const imageData = new ImageData(new Uint8ClampedArray(rgba), size.width, size.height);
 			ctx.putImageData(imageData, 0, 0);
 
-			canvas.toBlob(async (blob) => {
-				if (blob && onUpload) {
-					const file = new File([blob], 'pasted_image.png', { type: 'image/png' });
-					console.log('[Debug] Created File from system clipboard:', file);
+			const blob = await new Promise<Blob | null>((resolve) => {
+				canvas.toBlob(resolve, 'image/png');
+			});
 
-					const textarea = e.target as HTMLTextAreaElement;
-					const start = textarea.selectionStart;
-					const end = textarea.selectionEnd;
+			if (blob && onUpload) {
+				const file = new File([blob], 'pasted_image.png', { type: 'image/png' });
 
-					// Note: e.preventDefault() might be too late here to stop text paste,
-					// but we are appending markdown anyway.
-					uploading = true;
+				// Note: e.preventDefault() might be too late here to stop text paste,
+				// but we are appending markdown anyway.
+				uploading = true;
 
-					try {
-						const markdown = await onUpload(file);
-						if (markdown) {
-							const toInsert = markdown.startsWith('!') ? markdown : `![${file.name}](${markdown})`;
-
-							const before = value.substring(0, start);
-							const after = value.substring(end);
-
-							value = before + toInsert + after;
-							await setSelectionAndFocus(start + toInsert.length, start + toInsert.length);
-						}
-					} catch (error) {
-						console.error('[Debug] Failed to upload image (system fallback):', error);
-					} finally {
-						uploading = false;
+				try {
+					const markdown = await onUpload(file);
+					if (markdown) {
+						const toInsert = markdown.startsWith('!') ? markdown : `![${file.name}](${markdown})`;
+						await insertTextAtCursor(toInsert);
 					}
+				} catch (error) {
+					// Fallback failed
+				} finally {
+					uploading = false;
 				}
-			}, 'image/png');
+			}
 		} catch (err) {
-			console.log('[Debug] System clipboard read failed or empty:', err);
+			// System clipboard read failed or empty
 		}
 	}
 
 	async function handlePaste(e: ClipboardEvent) {
-		console.log('[Debug] Paste event detected in MarkdownEditor', {
-			types: e.clipboardData?.types,
-			files: e.clipboardData?.files.length,
-			items: e.clipboardData?.items.length
-		});
-
 		if (!onUpload || disabled || submitting || uploading) {
-			console.log('[Debug] Paste ignored: onUpload missing or editor disabled/busy');
 			return;
 		}
 
 		// Try clipboardData.files first (more reliable across browsers)
 		const files = e.clipboardData?.files;
 		if (files && files.length > 0) {
-			console.log('[Debug] Processing paste as FileList', files);
 			for (let i = 0; i < files.length; i++) {
 				const file = files[i];
-				console.log(`[Debug] File ${i}:`, file.name, file.type, file.size);
 
 				if (file.type.startsWith('image/')) {
-					// Capture selection BEFORE setting uploading=true (which disables input)
-					const textarea = e.target as HTMLTextAreaElement;
-					const start = textarea.selectionStart;
-					const end = textarea.selectionEnd;
-
 					e.preventDefault();
 					uploading = true;
-					console.log('[Debug] Starting upload for image:', file.name);
 
 					try {
 						const markdown = await onUpload(file);
-						console.log('[Debug] Upload completed, markdown received:', markdown);
 
 						if (markdown) {
 							// Insert markdown at cursor
 							const toInsert = markdown.startsWith('!') ? markdown : `![${file.name}](${markdown})`;
-
-							const before = value.substring(0, start);
-							const after = value.substring(end);
-
-							value = before + toInsert + after;
-							await setSelectionAndFocus(start + toInsert.length, start + toInsert.length);
-						} else {
-							console.warn('[Debug] Upload returned empty markdown');
+							await insertTextAtCursor(toInsert);
 						}
 					} catch (error) {
-						console.error('[Debug] Failed to upload image:', error);
+						// Error handled
 					} finally {
 						uploading = false;
 					}
 					return; // Handle only the first image
-				} else {
-					console.log('[Debug] File is not an image:', file.type);
 				}
 			}
 		}
@@ -228,42 +192,27 @@
 		// Fallback to clipboardData.items for browsers that use DataTransferItemList
 		const items = e.clipboardData?.items;
 		if (items) {
-			console.log('[Debug] Processing paste as DataTransferItemList', items);
 			for (let i = 0; i < items.length; i++) {
 				const item = items[i];
-				console.log(`[Debug] Item ${i}:`, item.kind, item.type);
 
 				if (item.type.startsWith('image/')) {
 					const file = item.getAsFile();
 					if (!file) {
-						console.warn('[Debug] Item.getAsFile() returned null');
 						continue;
 					}
-
-					console.log('[Debug] Extracted file from item:', file.name, file.type, file.size);
-
-					const textarea = e.target as HTMLTextAreaElement;
-					const start = textarea.selectionStart;
-					const end = textarea.selectionEnd;
 
 					e.preventDefault();
 					uploading = true;
 
 					try {
 						const markdown = await onUpload(file);
-						console.log('[Debug] Upload (fallback) completed, markdown:', markdown);
 
 						if (markdown) {
 							const toInsert = markdown.startsWith('!') ? markdown : `![${file.name}](${markdown})`;
-
-							const before = value.substring(0, start);
-							const after = value.substring(end);
-
-							value = before + toInsert + after;
-							await setSelectionAndFocus(start + toInsert.length, start + toInsert.length);
+							await insertTextAtCursor(toInsert);
 						}
 					} catch (error) {
-						console.error('[Debug] Failed to upload image (fallback):', error);
+						// Error handled
 					} finally {
 						uploading = false;
 					}
@@ -272,7 +221,6 @@
 			}
 		}
 
-		console.log('[Debug] No image found in paste data, trying system clipboard fallback...');
 		await checkSystemClipboard(e);
 	}
 

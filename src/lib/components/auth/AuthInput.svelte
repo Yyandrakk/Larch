@@ -9,7 +9,8 @@
 		icon: Icon,
 		disabled = false,
 		required = false,
-		id
+		id,
+		autocomplete = 'off'
 	} = $props<{
 		value?: string;
 		placeholder?: string;
@@ -18,6 +19,7 @@
 		disabled?: boolean;
 		required?: boolean;
 		id?: string;
+		autocomplete?: string;
 	}>();
 
 	let showPassword = $state(false);
@@ -40,6 +42,7 @@
 		{id}
 		type={inputType}
 		bind:value
+		{autocomplete}
 		class="w-full rounded-lg border border-gray-300 bg-gray-50 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-[var(--login-primary)] focus:ring-1 focus:ring-[var(--login-primary)] dark:border-[#344865] dark:bg-[#1a2432] dark:text-white dark:placeholder-[#6a7e99] dark:focus:border-[var(--login-primary)]"
 		class:pl-10={!!Icon}
 		class:pr-3={type !== 'password'}
@@ -54,7 +57,8 @@
 			type="button"
 			class="absolute right-3 flex items-center text-gray-400 hover:text-gray-600 dark:text-[var(--login-muted)] dark:hover:text-gray-300"
 			onclick={togglePassword}
-			tabindex="-1"
+			aria-label={showPassword ? 'Hide password' : 'Show password'}
+			aria-pressed={showPassword}
 		>
 			{#if showPassword}
 				<EyeOff class="h-5 w-5" />

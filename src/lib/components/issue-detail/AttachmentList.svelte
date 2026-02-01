@@ -3,6 +3,8 @@
 	import { Button } from '$lib/components/ui/button';
 	import { File, Image, Download, ExternalLink } from '@lucide/svelte';
 	import { openUrl } from '@tauri-apps/plugin-opener';
+	import { toast } from 'svelte-sonner';
+	import { t } from 'svelte-i18n';
 
 	let { attachments }: { attachments: Attachment[] } = $props();
 
@@ -11,6 +13,7 @@
 			await openUrl(url);
 		} catch (e) {
 			console.error('Failed to open attachment URL:', e);
+			toast.error($t('issueDetail.attachmentOpenError') || 'Failed to open attachment');
 		}
 	}
 </script>

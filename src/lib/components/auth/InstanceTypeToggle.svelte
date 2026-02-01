@@ -2,8 +2,9 @@
 	import { Cloud, Server } from '@lucide/svelte';
 	import { t } from 'svelte-i18n';
 
-	let { value = $bindable<'cloud' | 'self'>('cloud') } = $props<{
+	let { value = $bindable<'cloud' | 'self'>('cloud'), name = 'instance_type' } = $props<{
 		value?: 'cloud' | 'self';
+		name?: string;
 	}>();
 </script>
 
@@ -17,13 +18,7 @@
 		<label
 			class="group relative flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-[4px] py-1 text-sm font-medium transition-all hover:text-gray-900 dark:hover:text-white"
 		>
-			<input
-				type="radio"
-				name="instance_type"
-				value="cloud"
-				bind:group={value}
-				class="peer sr-only"
-			/>
+			<input type="radio" {name} value="cloud" bind:group={value} class="peer sr-only" />
 			<span
 				class="absolute inset-0 rounded-[4px] bg-white opacity-0 shadow-sm transition-all peer-checked:opacity-100 dark:bg-[var(--login-border)]"
 			></span>
@@ -39,13 +34,7 @@
 		<label
 			class="group relative flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-[4px] py-1 text-sm font-medium transition-all hover:text-gray-900 dark:hover:text-white"
 		>
-			<input
-				type="radio"
-				name="instance_type"
-				value="self"
-				bind:group={value}
-				class="peer sr-only"
-			/>
+			<input type="radio" {name} value="self" bind:group={value} class="peer sr-only" />
 			<span
 				class="absolute inset-0 rounded-[4px] bg-white opacity-0 shadow-sm transition-all peer-checked:opacity-100 dark:bg-[var(--login-border)]"
 			></span>

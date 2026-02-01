@@ -47,6 +47,7 @@
 	import IssueMetadataSidebar from './IssueMetadataSidebar.svelte';
 	import { setPendingCommit } from '$lib/stores/pendingClose';
 	import { tick } from 'svelte';
+	import DOMPurify from 'dompurify';
 
 	let {
 		issueId = $bindable<number | null>(null),
@@ -154,11 +155,17 @@
 		hasConflict = false;
 
 		try {
-			const [issueResult, historyResult, baseUrlResult] = await Promise.all([
+			const [issueResult, historyResult] = await Promise.all([
 				invoke<IssueDetail>(CMD_GET_ISSUE_DETAIL, { issueId: id }),
-				invoke<HistoryEntry[]>(CMD_GET_ISSUE_HISTORY, { issueId: id }),
-				invoke<string>(CMD_GET_TAIGA_BASE_URL)
+				invoke<HistoryEntry[]>(CMD_GET_ISSUE_HISTORY, { issueId: id })
 			]);
+
+			let baseUrlResult = '';
+			try {
+				baseUrlResult = await invoke<string>(CMD_GET_TAIGA_BASE_URL);
+			} catch (e) {
+				console.warn('Failed to load Taiga base URL:', e);
+			}
 
 			issue = issueResult;
 			history = historyResult;
@@ -1025,7 +1032,7 @@
 								</div>
 							{:else if issue.description_html}
 								<div class="prose prose-sm dark:prose-invert bg-card/50 max-w-none rounded-lg p-4">
-									{@html transformImageUrls(issue.description_html)}
+									{@html transformImageUrls(DOMPurify.sanitize(issue.description_html))}
 								</div>
 							{:else if issue.description}
 								<div class="bg-card/50 rounded-lg p-4 text-sm whitespace-pre-wrap">

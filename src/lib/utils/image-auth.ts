@@ -11,19 +11,15 @@ export function transformImageUrls(html: string): string {
 		return html.replace(/src="(https?:\/\/[^"]+)"/g, (match, url) => {
 			try {
 				const urlObj = new URL(url);
-				if (
-					urlObj.host === apiHost ||
-					urlObj.host.endsWith('.' + apiHost) ||
-					apiHost.endsWith('.' + urlObj.host)
-				) {
+				if (urlObj.host === apiHost || urlObj.host.endsWith('.' + apiHost)) {
 					return `src="${url.replace(/^https?:\/\//, 'taiga-auth://')}"`;
 				}
-			} catch (e) {
+			} catch {
 				// Invalid URL
 			}
 			return match;
 		});
-	} catch (e) {
+	} catch {
 		return html;
 	}
 }

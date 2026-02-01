@@ -12,6 +12,7 @@
 		selectedIds = [],
 		isExclude = false,
 		currentUserId,
+		open = false,
 		onApply,
 		customAnchor = null
 	}: {
@@ -19,6 +20,7 @@
 		selectedIds: number[];
 		isExclude: boolean;
 		currentUserId?: number;
+		open?: boolean;
 		onApply: (ids: number[], exclude: boolean) => void;
 		customAnchor?: HTMLElement | null;
 	} = $props();
@@ -28,9 +30,13 @@
 	let localExclude = $state(false);
 	let searchQuery = $state('');
 
+	let wasOpen = false;
 	$effect(() => {
-		localSelectedIds = [...selectedIds];
-		localExclude = isExclude;
+		if (open && !wasOpen) {
+			localSelectedIds = [...selectedIds];
+			localExclude = isExclude;
+		}
+		wasOpen = open;
 	});
 
 	interface MemberWithRole extends Member {
@@ -108,7 +114,10 @@
 		localSelectedIds.filter((id) => id !== UNASSIGNED_ID).length + (isUnassignedSelected ? 1 : 0)
 	);
 
-	let allVisibleIds = $derived([UNASSIGNED_ID, ...filteredMembers.map((m) => m.user_id!)]);
+	let allVisibleIds = $derived([
+		UNASSIGNED_ID,
+		...filteredMembers.map((m) => m.user_id).filter((id): id is number => id != null)
+	]);
 
 	let areAllVisibleSelected = $derived(
 		allVisibleIds.length > 0 && allVisibleIds.every((id) => localSelectedIds.includes(id))

@@ -3,7 +3,6 @@
 	import type { Component } from 'svelte';
 
 	let {
-		type,
 		label,
 		value,
 		isExclude = false,
@@ -12,7 +11,6 @@
 		onRemove,
 		onClick
 	}: {
-		type: 'project' | 'status' | 'assignee';
 		label: string;
 		value: string;
 		isExclude?: boolean;
@@ -46,7 +44,8 @@
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
-		if (e.key === 'Enter') {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
 			onClick?.();
 		}
 	}
@@ -83,7 +82,12 @@
 			</span>
 		</div>
 	</div>
-	<button class="ml-2 rounded-full p-0.5 {closeButtonClasses}" onclick={handleRemove} type="button">
+	<button
+		class="ml-2 rounded-full p-0.5 {closeButtonClasses}"
+		onclick={handleRemove}
+		type="button"
+		aria-label="Remove filter"
+	>
 		<X class="h-4 w-4" />
 	</button>
 </div>

@@ -36,10 +36,10 @@
 		const diffHours = Math.floor(diffMs / 3600000);
 		const diffDays = Math.floor(diffMs / 86400000);
 
-		if (diffMins < 1) return 'just now';
-		if (diffMins < 60) return `${diffMins}m ago`;
-		if (diffHours < 24) return `${diffHours}h ago`;
-		if (diffDays < 7) return `${diffDays}d ago`;
+		if (diffMins < 1) return $t('activity.justNow');
+		if (diffMins < 60) return $t('activity.minutesAgo', { values: { count: diffMins } });
+		if (diffHours < 24) return $t('activity.hoursAgo', { values: { count: diffHours } });
+		if (diffDays < 7) return $t('activity.daysAgo', { values: { count: diffDays } });
 
 		return date.toLocaleDateString(undefined, {
 			month: 'short',

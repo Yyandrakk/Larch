@@ -164,7 +164,7 @@
 										></div>
 										<span>{status.name}</span>
 										{#if status.is_closed}
-											<span class="text-muted-foreground text-xs">(Closed)</span>
+											<span class="text-muted-foreground text-xs">{$t('issueDetail.closed')}</span>
 										{/if}
 									</div>
 								</Select.Item>
@@ -301,7 +301,7 @@
 					<span class="text-sm font-medium">{issue.assigned_to_name}</span>
 				</div>
 			{:else}
-				<span class="text-muted-foreground text-sm italic">Unassigned</span>
+				<span class="text-muted-foreground text-sm italic">{$t('issueDetail.unassigned')}</span>
 			{/if}
 		</div>
 
@@ -401,7 +401,7 @@
 				{/if}
 				<span>Due: {formatDate(issue.due_date)}</span>
 				{#if issue.due_date_status === 'past_due'}
-					<span class="font-medium">(Overdue)</span>
+					<span class="font-medium">{$t('issueDetail.overdue')}</span>
 				{/if}
 			</div>
 		{/if}
@@ -411,7 +411,7 @@
 				class="bg-destructive/10 text-destructive flex items-center gap-2 rounded-lg p-2 text-sm"
 			>
 				<AlertTriangle class="h-4 w-4" />
-				<span class="font-medium">Blocked</span>
+				<span class="font-medium">{$t('issueDetail.blocked')}</span>
 				{#if issue.blocked_note}
 					<span>- {issue.blocked_note}</span>
 				{/if}

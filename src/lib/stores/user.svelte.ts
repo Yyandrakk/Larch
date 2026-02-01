@@ -21,13 +21,17 @@ export function getUserDisplayName(): string {
 
 export function getUserInitials(): string {
 	const name = getUserDisplayName();
-	return name
+	const initials = name
 		.split(' ')
 		.filter((n) => n.length > 0)
 		.map((n) => n[0])
 		.join('')
 		.toUpperCase()
 		.slice(0, 2);
+
+	if (initials.length > 0) return initials;
+	const trimmed = name.trim();
+	return trimmed.length > 0 ? trimmed.slice(0, 2).toUpperCase() : '?';
 }
 
 export function getUserPhoto(): string | null {

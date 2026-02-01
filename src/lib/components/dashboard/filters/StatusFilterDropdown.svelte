@@ -10,6 +10,7 @@
 		projects = [],
 		selectedIds = [],
 		isExclude = false,
+		open = false,
 		onApply,
 		customAnchor = null
 	}: {
@@ -17,6 +18,7 @@
 		projects: Project[];
 		selectedIds: number[];
 		isExclude: boolean;
+		open?: boolean;
 		onApply: (ids: number[], exclude: boolean) => void;
 		customAnchor?: HTMLElement | null;
 	} = $props();
@@ -26,10 +28,19 @@
 	let localExclude = $state(false);
 	let searchQuery = $state('');
 
+	let wasOpen = false;
 	$effect(() => {
-		localSelectedIds = [...selectedIds];
-		localExclude = isExclude;
+		if (open && !wasOpen) {
+			localSelectedIds = [...selectedIds];
+			localExclude = isExclude;
+		}
+		wasOpen = open;
 	});
+
+	function getProjectTagStyles(pName: string): string {
+		const color = getProjectColor(pName);
+		return `${color.replace('-500', '-500/10')} ${color.replace('bg-', 'text-').replace('-500', '-400')}`;
+	}
 
 	interface StatusWithProjects {
 		status: IssueStatus;
@@ -271,7 +282,7 @@
 									? 'opacity-100'
 									: 'opacity-60 group-hover:opacity-100'}"
 							>
-								{#each item.projectNames.slice(0, 3) as pName}
+								{#each item.projectNames.slice(0, 2) as pName, idx (pName + idx)}
 									<div class="h-4 w-1.5 rounded-full {getProjectColor(pName)}" title={pName}></div>
 								{/each}
 							</div>
@@ -332,13 +343,9 @@
 						</div>
 						<div class="flex items-center gap-2">
 							<span
-								class="rounded border px-1.5 py-0.5 text-[10px] font-medium {getProjectColor(
+								class="rounded border px-1.5 py-0.5 text-[10px] font-medium {getProjectTagStyles(
 									item.projectNames[0]
-								)
-									.replace('bg-', 'bg-')
-									.replace('-500', '-500/10')} {getProjectColor(item.projectNames[0])
-									.replace('bg-', 'text-')
-									.replace('-500', '-400')} border-current/20"
+								)} border-current/20"
 							>
 								{item.projectNames[0].substring(0, 10)}
 							</span>

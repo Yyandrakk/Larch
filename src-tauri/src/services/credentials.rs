@@ -20,7 +20,11 @@ pub fn get_api_token() -> Result<Secret<String>> {
 
 pub fn delete_api_token() -> Result<()> {
     let entry = Entry::new(SERVICE_NAME, USER_NAME)?;
-    entry.delete_password().ok();
+    if let Err(err) = entry.delete_password() {
+        if !matches!(err, keyring::Error::NoEntry) {
+            return Err(err.into());
+        }
+    }
     Ok(())
 }
 
@@ -38,6 +42,10 @@ pub fn get_refresh_token() -> Result<Secret<String>> {
 
 pub fn delete_refresh_token() -> Result<()> {
     let entry = Entry::new(SERVICE_NAME, REFRESH_TOKEN_USER)?;
-    entry.delete_password().ok();
+    if let Err(err) = entry.delete_password() {
+        if !matches!(err, keyring::Error::NoEntry) {
+            return Err(err.into());
+        }
+    }
     Ok(())
 }

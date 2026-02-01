@@ -51,8 +51,8 @@ update:
 # Usage: just bump 2.0.0-beta.1
 bump version:
     @echo "Bumping version to {{version}}..."
-    @sed -i 's/"version": "[^"]*"/"version": "{{version}}"/' package.json
-    @sed -i 's/"version": "[^"]*"/"version": "{{version}}"/' src-tauri/tauri.conf.json
-    @sed -i 's/^version = "[^"]*"/version = "{{version}}"/' src-tauri/Cargo.toml
+    @sed -i.bak 's/"version": "[^"]*"/"version": "{{version}}"/' package.json && rm package.json.bak
+    @sed -i.bak 's/"version": "[^"]*"/"version": "{{version}}"/' src-tauri/tauri.conf.json && rm src-tauri/tauri.conf.json.bak
+    @sed -i.bak 's/^version = "[^"]*"/version = "{{version}}"/' src-tauri/Cargo.toml && rm src-tauri/Cargo.toml.bak
     @echo "Version bumped to {{version}}"
     @echo "Don't forget to: git tag -a v{{version}} -m 'Release v{{version}}'"

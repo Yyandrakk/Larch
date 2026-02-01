@@ -52,24 +52,51 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 let uri = request.uri().to_string();
                 let target_url = uri.replace("taiga-auth://", "https://");
-                
-                let client = app_handle.state::<taiga_client::TaigaClient>();
-                let token_result = crate::services::credentials::get_api_token();
-                
-                let token = token_result.ok();
-                
+
+                let client = match app_handle.try_state::<taiga_client::TaigaClient>() {
+                    Some(c) => c,
+                    None => {
+                        log::error!("TaigaClient not found in state when fetching {}", target_url);
+                        if let Ok(response) = tauri::http::Response::builder()
+                            .status(500)
+                            .header("Access-Control-Allow-Origin", "*")
+                            .body(vec![])
+                        {
+                            responder.respond(response);
+                        }
+                        return;
+                    }
+                };
+
+                let token = crate::services::credentials::get_api_token().ok();
+
                 match client.get_raw_resource(&target_url, token.as_ref()).await {
                     Ok((bytes, mime)) => {
-                        let response = tauri::http::Response::builder()
+                        match tauri::http::Response::builder()
                             .header("Access-Control-Allow-Origin", "*")
                             .header("Content-Type", mime)
                             .body(bytes)
-                            .unwrap();
-                        responder.respond(response);
-                    },
+                        {
+                            Ok(response) => responder.respond(response),
+                            Err(e) => {
+                                log::error!("Failed to build response for {}: {}", target_url, e);
+                                if let Ok(fallback) = tauri::http::Response::builder()
+                                    .status(500)
+                                    .body(vec![])
+                                {
+                                    responder.respond(fallback);
+                                }
+                            }
+                        }
+                    }
                     Err(e) => {
                         log::error!("Failed to proxy image {}: {}", target_url, e);
-                        responder.respond(tauri::http::Response::builder().status(404).body(vec![]).unwrap());
+                        if let Ok(response) = tauri::http::Response::builder()
+                            .status(404)
+                            .body(vec![])
+                        {
+                            responder.respond(response);
+                        }
                     }
                 }
             });

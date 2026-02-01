@@ -101,8 +101,10 @@
 	<div
 		class="fixed inset-0 z-40"
 		onclick={closeDropdown}
-		onkeydown={() => {}}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') closeDropdown();
+		}}
 		role="button"
-		tabindex="-1"
+		tabindex="0"
 	></div>
 {/if}

@@ -102,7 +102,7 @@
 				metadata = await invoke(CMD_GET_PROJECT_METADATA, { projectIds: filters.project_ids });
 			}
 
-			toast.success(`${$t('dashboard.loaded')} ${issues.length}`);
+			toast.success($t('dashboard.loadedCount', { values: { count: issues.length } }));
 		} catch (error) {
 			console.error('Failed to fetch issues:', error);
 			toast.error($t('errors.unknown'));

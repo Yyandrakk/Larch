@@ -11,7 +11,12 @@ export function setSessionExpiredHandler(handler: () => void): void {
 
 function isUnauthorizedError(error: unknown): boolean {
 	const errorStr = String(error).toLowerCase();
-	return errorStr.includes('unauthorized') || errorStr.includes('401');
+	return (
+		errorStr.includes('unauthorized') ||
+		errorStr.includes('401') ||
+		errorStr.includes('403') ||
+		errorStr.includes('forbidden')
+	);
 }
 
 async function handleTokenRefresh(): Promise<void> {

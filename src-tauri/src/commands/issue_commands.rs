@@ -412,11 +412,10 @@ pub async fn upload_issue_attachment(
     mime_type: Option<String>,
     file_data: Vec<u8>,
 ) -> Result<crate::domain::issue_detail::Attachment> {
-    log::info!(
-        "[Debug] Command upload_issue_attachment: project={}, issue={}, file={}, type={:?}, size={} bytes",
+    log::debug!(
+        "Command upload_issue_attachment: project={}, issue={}, type={:?}, size={} bytes",
         project_id,
         issue_id,
-        file_name,
         mime_type,
         file_data.len()
     );
@@ -431,16 +430,35 @@ pub async fn upload_issue_attachment(
     ) -> Result<crate::domain::issue_detail::Attachment> {
         let token = credentials::get_api_token()?;
         let attachment_dto = client
-            .upload_issue_attachment(&token, project_id, issue_id, file_name.to_string(), mime_type, file_data.to_vec())
+            .upload_issue_attachment(
+                &token,
+                project_id,
+                issue_id,
+                file_name.to_string(),
+                mime_type,
+                file_data.to_vec(),
+            )
             .await?;
         Ok((&attachment_dto).into())
     }
 
-    match fetch(&client, project_id, issue_id, &file_name, mime_type.clone(), &file_data).await {
+    match fetch(
+        &client,
+        project_id,
+        issue_id,
+        &file_name,
+        mime_type.clone(),
+        &file_data,
+    )
+    .await
+    {
         Err(crate::error::Error::Unauthorized) => {
             log::info!("Unauthorized, attempting token refresh");
             token_refresh::refresh_token(&client).await?;
-            fetch(&client, project_id, issue_id, &file_name, mime_type, &file_data).await
+            fetch(
+                &client, project_id, issue_id, &file_name, mime_type, &file_data,
+            )
+            .await
         }
         result => result,
     }

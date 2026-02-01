@@ -96,6 +96,7 @@
 	--color-ring: var(--ring);
 	--color-background-light: #f6f7f8;
 	--color-background-dark: #111821;
+	--color-brand-primary: #196ee6;
 	--color-primary: #196ee6;
 	--color-chart-1: var(--chart-1);
 	--color-chart-2: var(--chart-2);
@@ -127,6 +128,12 @@
    ============================================ */
 
 /* Custom Scrollbar for Dark Theme */
+/* Firefox scrollbar support */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: #243347 #111821;
+}
+
 ::-webkit-scrollbar {
 	width: 8px;
 	height: 8px;

@@ -194,7 +194,6 @@
 				{#if hasProjectFilter}
 					<div {...props}>
 						<FilterChip
-							type="project"
 							label={$t('filters.project')}
 							value={getProjectChipValue()}
 							isExclude={filters.project_exclude ?? false}
@@ -224,7 +223,6 @@
 				{#if hasStatusFilter}
 					<div {...props}>
 						<FilterChip
-							type="status"
 							label={$t('filters.status')}
 							value={getStatusChipValue()}
 							isExclude={filters.status_exclude ?? false}
@@ -242,6 +240,7 @@
 			{projects}
 			selectedIds={filters.status_ids || []}
 			isExclude={filters.status_exclude ?? false}
+			open={statusDropdownOpen}
 			onApply={handleStatusApply}
 			customAnchor={!hasStatusFilter && openedFromAddFilter === 'status'
 				? addFilterButtonRef
@@ -255,7 +254,6 @@
 				{#if hasAssigneeFilter}
 					<div {...props}>
 						<FilterChip
-							type="assignee"
 							label={$t('filters.assignee')}
 							value={getAssigneeChipValue()}
 							isExclude={filters.assignee_exclude ?? false}
@@ -274,6 +272,7 @@
 			selectedIds={filters.assignee_ids || []}
 			isExclude={filters.assignee_exclude ?? false}
 			{currentUserId}
+			open={assigneeDropdownOpen}
 			onApply={handleAssigneeApply}
 			customAnchor={!hasAssigneeFilter && openedFromAddFilter === 'assignee'
 				? addFilterButtonRef

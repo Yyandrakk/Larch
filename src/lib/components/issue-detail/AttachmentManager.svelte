@@ -28,7 +28,7 @@
 		uploading?: boolean;
 		disabled?: boolean;
 		onUpload?: (fileName: string, fileData: Uint8Array, mimeType?: string) => void;
-		onDelete?: (attachmentId: number) => void;
+		onDelete?: (id: number) => void | Promise<void>;
 		onRetry?: () => void;
 	} = $props();
 
@@ -56,7 +56,7 @@
 		if (!onDelete || deletingId !== null) return;
 		deletingId = attachmentId;
 		try {
-			onDelete(attachmentId);
+			await onDelete?.(attachmentId);
 		} finally {
 			deletingId = null;
 		}

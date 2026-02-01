@@ -5,6 +5,7 @@
 	import MarkdownEditor from '$lib/components/common/MarkdownEditor.svelte';
 	import { Separator } from '$lib/components/ui/separator';
 	import { transformImageUrls } from '$lib/utils/image-auth';
+	import DOMPurify from 'dompurify';
 
 	let {
 		comments,
@@ -132,7 +133,7 @@
 					<div class="mt-1 text-sm">
 						{#if comment.comment_html}
 							<div class="prose prose-sm dark:prose-invert max-w-none">
-								{@html transformImageUrls(comment.comment_html)}
+								{@html transformImageUrls(DOMPurify.sanitize(comment.comment_html))}
 							</div>
 						{:else if comment.comment}
 							<p class="whitespace-pre-wrap">{comment.comment}</p>

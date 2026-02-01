@@ -50,7 +50,7 @@ pnpm build            # vite build
 
 ### Directory Structure
 
-```
+```text
 src/                    # Svelte 5 frontend (TypeScript)
   lib/
     components/         # Reusable UI components
@@ -298,7 +298,7 @@ async fn test_draft_lifecycle() {
 
 Before implementing, always check these documents:
 
-1. **Product Definition**: `docs/doc-desing.md` (features, scope, libraries)
+1. **Product Definition**: `docs/doc-design.md` (features, scope, libraries)
 2. **Architecture**: `docs/architecture.md` (structural patterns)
 3. **ADRs**: `docs/ADR/*` (technical decisions)
 
@@ -321,3 +321,29 @@ If your implementation contradicts a document, raise the conflict before proceed
 | Secrets       | keyring-rs             | 2.x     |
 
 **MCP Context7**: Use for Tauri v2 / Svelte 5 API lookups - training data may be outdated.
+
+---
+
+## 11. AI Agent Guidelines
+
+### Documentation Format Reminders
+
+- **AGENTS.md is MARKDOWN**, not JSON or any other format
+- All documentation files in this project use standard Markdown syntax
+- For code blocks, always specify the language: `rust, `typescript, ```svelte
+- Markdown images use standard syntax: `![alt text](url)` - never `![] (url)`
+- File names are case-sensitive and use kebab-case or PascalCase as appropriate
+
+### Common Pitfalls to Avoid
+
+1. **Document Format Confusion**: Never mistake .md files for JSON or other formats
+2. **Image Syntax**: Always use `![alt text](url)` - the `![] (url)` format is invalid
+3. **Language Hints**: Always add language hints to code blocks for proper highlighting
+4. **File Naming**: Check existing patterns before creating/referencing files
+
+### When in Doubt
+
+1. Check existing documentation files for format examples
+2. Use standard GitHub-flavored Markdown syntax
+3. Verify file names match what exists in the repo
+4. Test image syntax in a markdown viewer if unsure

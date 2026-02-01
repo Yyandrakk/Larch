@@ -487,9 +487,8 @@ impl TaigaClient {
         file_data: Vec<u8>,
     ) -> Result<models::AttachmentDto, TaigaClientError> {
         let url = self.build_url("issues/attachments")?;
-        log::info!(
-            "[Debug] TaigaClient: Uploading attachment {} (type: {:?}) for issue {} in project {} to {}",
-            file_name,
+        log::debug!(
+            "TaigaClient: Uploading attachment (type: {:?}) for issue {} in project {} to {}",
             mime_type,
             issue_id,
             project_id,
@@ -502,9 +501,9 @@ impl TaigaClient {
         });
 
         let file_part = multipart::Part::bytes(file_data)
-            .file_name(file_name)
+            .file_name(file_name.clone())
             .mime_str(&mime)
-            .unwrap();
+            .map_err(|_| TaigaClientError::InvalidMimeType(mime.clone()))?;
 
         let form = multipart::Form::new()
             .text("object_id", issue_id.to_string())
@@ -521,11 +520,17 @@ impl TaigaClient {
             .send()
             .await?;
 
-        log::info!("[Debug] Upload attachment response status: {}", response.status());
+        log::info!(
+            "[Debug] Upload attachment response status: {}",
+            response.status()
+        );
 
         if response.status().is_success() {
             let attachment = response.json::<models::AttachmentDto>().await?;
-            log::info!("[Debug] Upload successful. Attachment ID: {}", attachment.id);
+            log::info!(
+                "[Debug] Upload successful. Attachment ID: {}",
+                attachment.id
+            );
             Ok(attachment)
         } else {
             let status = response.status();
@@ -590,14 +595,16 @@ impl TaigaClient {
         token: Option<&Secret<String>>,
     ) -> Result<(Vec<u8>, String), TaigaClientError> {
         let mut req = self.client.get(url);
-        
+
         // Safety check: Only attach token if the request URL matches our API host
         let should_attach_token = if let Ok(parsed_url) = Url::parse(url) {
             match (parsed_url.host_str(), self.api_base_url.host_str()) {
                 (Some(target_host), Some(api_host)) => {
-                    // Check if hosts match or are subdomains of each other
-                    target_host.ends_with(api_host) || api_host.ends_with(target_host)
-                },
+                    let target_lower = target_host.to_lowercase();
+                    let api_lower = api_host.to_lowercase();
+                    target_lower == api_lower
+                        || target_lower.ends_with(&format!(".{}", api_lower))
+                }
                 _ => false,
             }
         } else {

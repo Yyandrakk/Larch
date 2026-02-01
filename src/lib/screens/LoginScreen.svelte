@@ -14,12 +14,39 @@
 	let password = $state('');
 	let loading = $state(false);
 	let errorMsg = $state<string | null>(null);
+	let urlError = $state<string | null>(null);
 
 	let { onLoginSuccess } = $props<{ onLoginSuccess: () => void }>();
+
+	function validateCustomUrl(url: string): string | null {
+		if (!url.trim()) return $t('login.errorUrlRequired');
+		try {
+			const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
+			if (!['http:', 'https:'].includes(urlObj.protocol)) {
+				return $t('login.errorUrlProtocol');
+			}
+			return null;
+		} catch {
+			return $t('login.errorUrlFormat');
+		}
+	}
 
 	async function handleLogin() {
 		loading = true;
 		errorMsg = null;
+		urlError = null;
+
+		if (instanceType === 'self') {
+			const validationError = validateCustomUrl(customUrl);
+			if (validationError) {
+				urlError = validationError;
+				loading = false;
+				return;
+			}
+			if (!customUrl.startsWith('http')) {
+				customUrl = `https://${customUrl}`;
+			}
+		}
 
 		const apiUrl = instanceType === 'cloud' ? 'https://api.taiga.io' : customUrl.replace(/\/$/, '');
 
@@ -125,9 +152,15 @@
 								disabled={loading}
 								required={instanceType === 'self'}
 							/>
-							<p class="text-xs text-gray-500 dark:text-[var(--login-muted)]">
-								{$t('login.instanceUrlHint')}
-							</p>
+							{#if urlError}
+								<p class="text-xs text-red-500 dark:text-red-400">
+									{urlError}
+								</p>
+							{:else}
+								<p class="text-xs text-gray-500 dark:text-[var(--login-muted)]">
+									{$t('login.instanceUrlHint')}
+								</p>
+							{/if}
 						</div>
 					{/if}
 

@@ -1,4 +1,10 @@
 {
+	"activity": {
+		"justNow": "just now",
+		"minutesAgo": "{count}m ago",
+		"hoursAgo": "{count}h ago",
+		"daysAgo": "{count}d ago"
+	},
 	"app": {
 		"title": "Larch"
 	},
@@ -26,6 +32,9 @@
 		"instanceUrl": "Instance URL",
 		"instanceUrlPlaceholder": "https://taiga.mycompany.com",
 		"instanceUrlHint": "Enter the full URL of your Taiga instance.",
+		"errorUrlRequired": "URL is required",
+		"errorUrlProtocol": "URL must use HTTP or HTTPS",
+		"errorUrlFormat": "Invalid URL format",
 		"signInButton": "Sign In to Dashboard",
 		"poweredBy": "Powered by Taiga API",
 		"apiUrlLabel": "Taiga API URL",
@@ -71,6 +80,7 @@
 		"refresh": "Refresh",
 		"noIssues": "No issues found.",
 		"loaded": "Loaded issues:",
+		"loadedCount": "Loaded {count} issues",
 		"showing": "Showing",
 		"of": "of",
 		"issues": "issues",
@@ -131,6 +141,7 @@
 		"status": "Status",
 		"statusOpen": "Open",
 		"statusClosed": "Closed",
+		"closed": "(Closed)",
 		"type": "Type",
 		"priority": "Priority",
 		"severity": "Severity",
@@ -141,6 +152,7 @@
 		"watchers": "Watchers",
 		"watchersCount": "{count} watching",
 		"dueDate": "Due date",
+		"overdue": "(Overdue)",
 		"dueDateOverdue": "Overdue",
 		"createdAt": "Created",
 		"modifiedAt": "Last updated",
@@ -219,6 +231,7 @@
 		"updated": "Updated",
 		"share": "Share",
 		"shareCopied": "Issue URL copied to clipboard",
-		"shareError": "Failed to copy URL"
+		"shareError": "Failed to copy URL",
+		"blocked": "Blocked"
 	}
 }

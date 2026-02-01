@@ -69,14 +69,22 @@ pub async fn get_taiga_base_url(
     // Transform API URL to web URL
     // Cloud: https://api.taiga.io -> https://tree.taiga.io
     // Self-hosted: https://taiga.example.com/api/v1 -> https://taiga.example.com
-    let base_url = if api_url.contains("api.taiga.io") {
-        "https://tree.taiga.io".to_string()
+    let base_url = if let Ok(parsed) = url::Url::parse(&api_url) {
+        if parsed.host_str() == Some("api.taiga.io") {
+            "https://tree.taiga.io".to_string()
+        } else {
+            // Strip common API path suffixes
+            let mut result = api_url.clone();
+            for suffix in &["/api/v1", "/api/v2", "/api"] {
+                if result.ends_with(suffix) {
+                    result = result.trim_end_matches(suffix).to_string();
+                    break;
+                }
+            }
+            result.trim_end_matches('/').to_string()
+        }
     } else {
-        // Strip /api/v1 suffix if present
-        api_url
-            .trim_end_matches("/api/v1")
-            .trim_end_matches('/')
-            .to_string()
+        api_url.trim_end_matches("/api/v1").trim_end_matches('/').to_string()
     };
 
     Ok(base_url)
