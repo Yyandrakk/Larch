@@ -141,6 +141,150 @@ impl Repository for SqliteRepository {
 
         Ok(())
     }
+
+    async fn list_views(&self) -> Result<Vec<saved_views::Model>> {
+        let views = saved_views::Entity::find()
+            .all(&self.conn)
+            .await
+            .map_err(|e| crate::error::Error::Database(e.to_string()))?;
+
+        Ok(views)
+    }
+
+    async fn get_view(&self, id: i32) -> Result<Option<saved_views::Model>> {
+        let view = saved_views::Entity::find_by_id(id)
+            .one(&self.conn)
+            .await
+            .map_err(|e| crate::error::Error::Database(e.to_string()))?;
+
+        Ok(view)
+    }
+
+    async fn create_view(
+        &self,
+        name: &str,
+        filter_data: &str,
+        is_system: bool,
+        is_default: bool,
+    ) -> Result<saved_views::Model> {
+        let now = chrono::Utc::now().naive_utc();
+
+        if is_default {
+            saved_views::Entity::update_many()
+                .col_expr(saved_views::Column::IsDefault, sea_orm::sea_query::Expr::value(false))
+                .exec(&self.conn)
+                .await
+                .map_err(|e| crate::error::Error::Database(e.to_string()))?;
+        }
+
+        let view = saved_views::ActiveModel {
+            id: sea_orm::ActiveValue::NotSet,
+            name: Set(name.to_string()),
+            filter_data: Set(filter_data.to_string()),
+            is_system: Set(is_system),
+            is_default: Set(is_default),
+            created_at: Set(now),
+            last_used: Set(now),
+        };
+
+        let result = view
+            .insert(&self.conn)
+            .await
+            .map_err(|e| crate::error::Error::Database(e.to_string()))?;
+
+        Ok(result)
+    }
+
+    async fn update_view(&self, id: i32, name: &str, filter_data: &str) -> Result<()> {
+        let view = saved_views::Entity::find_by_id(id)
+            .one(&self.conn)
+            .await
+            .map_err(|e| crate::error::Error::Database(e.to_string()))?;
+
+        if let Some(existing_view) = view {
+            let mut active: saved_views::ActiveModel = existing_view.into();
+            active.name = Set(name.to_string());
+            active.filter_data = Set(filter_data.to_string());
+            active
+                .update(&self.conn)
+                .await
+                .map_err(|e| crate::error::Error::Database(e.to_string()))?;
+        } else {
+            return Err(crate::error::Error::Database(format!("View with id {} not found", id)));
+        }
+
+        Ok(())
+    }
+
+    async fn delete_view(&self, id: i32) -> Result<()> {
+        let view = saved_views::Entity::find_by_id(id)
+            .one(&self.conn)
+            .await
+            .map_err(|e| crate::error::Error::Database(e.to_string()))?;
+
+        if let Some(view_model) = view {
+            if view_model.is_system {
+                return Err(crate::error::Error::Database("Cannot delete system view".to_string()));
+            }
+
+            saved_views::Entity::delete_by_id(id)
+                .exec(&self.conn)
+                .await
+                .map_err(|e| crate::error::Error::Database(e.to_string()))?;
+        } else {
+            return Err(crate::error::Error::Database(format!("View with id {} not found", id)));
+        }
+
+        Ok(())
+    }
+
+    async fn touch_view(&self, id: i32) -> Result<()> {
+        let now = chrono::Utc::now().naive_utc();
+
+        let view = saved_views::Entity::find_by_id(id)
+            .one(&self.conn)
+            .await
+            .map_err(|e| crate::error::Error::Database(e.to_string()))?;
+
+        if let Some(existing_view) = view {
+            let mut active: saved_views::ActiveModel = existing_view.into();
+            active.last_used = Set(now);
+            active
+                .update(&self.conn)
+                .await
+                .map_err(|e| crate::error::Error::Database(e.to_string()))?;
+        } else {
+            return Err(crate::error::Error::Database(format!("View with id {} not found", id)));
+        }
+
+        Ok(())
+    }
+
+    async fn set_default_view(&self, id: i32) -> Result<()> {
+        saved_views::Entity::update_many()
+            .col_expr(saved_views::Column::IsDefault, sea_orm::sea_query::Expr::value(false))
+            .exec(&self.conn)
+            .await
+            .map_err(|e| crate::error::Error::Database(e.to_string()))?;
+
+        let view = saved_views::Entity::find_by_id(id)
+            .one(&self.conn)
+            .await
+            .map_err(|e| crate::error::Error::Database(e.to_string()))?;
+
+        if let Some(existing_view) = view {
+            let mut active: saved_views::ActiveModel = existing_view.into();
+            active.is_default = Set(true);
+            active
+                .update(&self.conn)
+                .await
+                .map_err(|e| crate::error::Error::Database(e.to_string()))?;
+        } else {
+            return Err(crate::error::Error::Database(format!("View with id {} not found", id)));
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
