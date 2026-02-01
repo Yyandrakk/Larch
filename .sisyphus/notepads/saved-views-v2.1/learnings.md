@@ -52,3 +52,53 @@
 - Added comprehensive test coverage: 4 test cases covering all scenarios (creation, user views exist, idempotency, no config).
 - All tests pass (22 total tests in the project).
 - No clippy warnings.
+
+## View Sanitizer Implementation (2026-02-01)
+- Created `src-tauri/src/services/view_sanitizer.rs` for orphan ID cleanup.
+- `sanitize_all_views()` takes valid project and status ID sets, filters out orphans from saved views.
+- System views (`is_system=true`) are explicitly skipped during sanitization to preserve integrity.
+- FilterData struct mirrors the one in `project_commands.rs` with `#[serde(skip_serializing_if = "Option::is_none")]` to maintain clean JSON output.
+- Changed detection uses array length comparison before/after `retain()` to minimize unnecessary DB updates.
+- Added comprehensive test coverage: orphan removal, system view preservation, valid ID preservation, and empty set behavior.
+- All 4 tests pass successfully with no clippy warnings.
+- Committed with semantic style: `feat(repo): add orphan ID sanitization for saved views`.
+
+## Task 8: Tauri Commands for View Management
+
+### Implementation Pattern
+- Created `src-tauri/src/commands/view_commands.rs` with 7 commands
+- All commands follow the established pattern from `draft_commands.rs`:
+  - Use `tauri::State<'_, SqliteRepository>` for DI
+  - Use unified `Result` type from `crate::error`
+  - Include logging with `log::error!` on failures
+  - Input validation where appropriate (e.g., non-empty names)
+
+### Command Design Decisions
+1. **create_view**: Hardcodes `is_system=false` and `is_default=false` for user-created views
+   - System views should only be created during initialization
+   - Default status managed through separate command
+   
+2. **switch_view**: Combines two repository operations
+   - `touch_view(id)` updates last_used timestamp
+   - `get_view(id)` retrieves the full model
+   - Returns the view model so frontend has fresh data after switch
+   
+3. **Input validation**: Added empty name checks in `create_view` and `update_view`
+   - Prevents database errors from invalid data
+   - Returns clear `InvalidInput` error type
+
+### API Surface
+- `list_views()` → `Vec<SavedView>`
+- `get_view(id)` → `Option<SavedView>`
+- `create_view(name, filter_data)` → `SavedView`
+- `update_view(id, name, filter_data)` → `()`
+- `delete_view(id)` → `()`
+- `switch_view(id)` → `SavedView`
+- `set_default_view(id)` → `()`
+
+### Code Quality
+- ✅ `cargo check` passes
+- ✅ `cargo clippy -- -D warnings` passes
+- ✅ Follows project conventions (imports, error handling, logging)
+- ✅ Exported from `commands/mod.rs`
+

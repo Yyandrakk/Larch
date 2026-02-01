@@ -1,10 +1,10 @@
 # Larch - Design Document
 
 > **Author:** Oscar Garcia de Lara Parreño
-> **Version:** 2.0 (Redesign & UX Enhancement Phase)
-> **Last Updated:** 2026-01-31
+> **Version:** 2.1 (Saved Views & Triage Persistence Phase)
+> **Last Updated:** 2026-02-01
 > **Project Name:** Larch
-> **Baseline:** v1.1 (Tauri v2, Svelte 5, Testing suite, SeaORM)
+> **Baseline:** v2.0 (Stitch Redesign, Svelte 5, SeaORM)
 
 ---
 
@@ -12,46 +12,43 @@
 
 ### 1.1. Problem Statement
 
-Taiga.io is an effective project management tool, but its architecture isolates each project into a distinct silo. For users who manage or participate in multiple projects, this requires them to manually switch contexts—navigating into each project individually—to track, manage, and respond to issues. This process is time-consuming, inefficient, and increases the risk of missing critical updates or having slow response times, especially as the number of managed projects grows.
+Taiga.io is an effective project management tool, but its architecture isolates each project into a distinct silo. For users who manage or participate in multiple projects, this requires them to manually switch contexts—navigating into each project individually—to track, manage, and respond to issues. This process is time-consuming, inefficient, and increases the risk of missing critical updates. While Larch v2.0 introduced an aggregated "single pane of glass" view, users still face friction when manually re-applying complex filter combinations for different work contexts (e.g., "Critical Bugs" vs. "Client X Review").
 
 ### 1.2. Vision & Goal
 
 The vision for Larch is to create a centralized, multi-project issue management dashboard for Taiga.io that acts as a "single pane of glass" for issue triage and management.
 
-**v2.0 Focus:** Full structural and visual overhaul. Transitioning from a page-based navigation to a modern, sidebar-driven interface using AI-generated layouts from **Google Stitch** as a development reference. This version focuses on high-frequency user actions: a more fluid sidebar-driven navigation, the ability to quickly share links, and seamless attachment handling via pasted screenshots to speed up reporting.
+**v2.1 Focus:** Evolve the platform from a "visualization tool" to a "personalized management hub" by implementing **Saved Views**. This version aims to allow users to define, persist, and switch between complex filter contexts instantly, eliminating manual configuration and enabling priority-driven navigation.
 
 ### 1.3. Key Terminology / Glossary
 
-- **Taiga Instance:** A specific deployment of Taiga, either the official cloud version (`taiga.io`) or a self-hosted (on-premise) server.
-- **Project:** A standard project workspace within a Taiga Instance.
-- **Issue:** A ticket within the "Issues" module of a Taiga Project.
-- **Issue Status:** A named state for issues configured per-project (e.g., "New", "In Progress", "Need info", "Closed", "Rejected").
-- **is_closed:** A boolean flag on Issue Status indicating if this status represents a closed/resolved state.
-- **Google Stitch:** An AI design tool used to generate HTML/CSS layouts that serve as a visual and structural reference for Svelte component development.
-- **OpenCode:** Tool utilized alongside Stitch to implement and refine the logic for image pasting and other frontend functionalities.
-- **Attachments:** Files and screenshots associated with an issue.
+* **Taiga Instance:** A specific deployment of Taiga (official cloud or self-hosted).
+* **Active Triage:** The default, system-level view that filters out closed issues to reduce cognitive load.
+* **Saved View (Preset):** A persistent configuration of filters (projects, statuses, assignees) with a user-defined name.
+* **Dirty State:** A visual indicator signaling that the current active filters have been modified and differ from the version persisted in the database.
+* **View Switcher:** A header-level component used to navigate between different saved views.
+* **Google Stitch:** An AI design tool used to generate HTML/CSS layouts as a development reference.
+* **is_closed:** A boolean flag on Issue Status indicating if this status represents a closed/resolved state.
 
 ---
 
 ## 2. Goals & Non-Goals (The "Scope")
 
-### 2.1. Goals (v2.0)
+### 2.1. Goals (v2.1)
 
-- [ ] **Stitch-based Redesign:** Use AI-generated layouts to implement a professional UI for login, navigation, and dashboards.
-- [ ] **Sidebar Navigation:** Implement a persistent sidebar for switching between "Projects" and "Dashboard".
-- [ ] **Overlay Issue Detail:** Replace the full-page view with a Sidebar Drawer that superimposes over the main table for faster context-switching.
-- [ ] **Copy Taiga Link:** A quick action in the issue panel to copy the direct URL of the issue to the clipboard.
-- [ ] **Clipboard Screenshot Support:** Allow users to paste images (Ctrl+V) directly into comments or descriptions, triggering an automatic upload to Taiga using **OpenCode**-refined logic.
-- [ ] **Secure Credential Storage:** Maintain the use of the native OS keychain for auth/refresh tokens.
-- [ ] **Desktop Application:** Standalone, cross-platform app built with Tauri v2.
+* [ ] **View Persistence:** Implement local storage for custom filters in SQLite using SeaORM.
+* [ ] **Dropdown View Switcher:** Replace the static title with an interactive selector to switch and delete views.
+* [ ] **Contextual Save Management:** Implement a "Split Button" in the filter bar to save changes or create new views without leaving the triage flow.
+* [ ] **Integrity Validation:** Backend logic to detect and sanitize orphan project or status IDs within saved views.
+* [ ] **Dirty State Indicator:** A subtle visual notification (asterisk or dot) to alert users of unsaved changes in the current view.
+* [ ] **Functional Continuity:** Maintain all v2.0 features, including sidebar navigation, overlay details, link copying, and clipboard screenshot support.
 
 ### 2.2. Non-Goals
 
-- **NO Advanced Collision Management:** Following user feedback, Git-like diff resolution is out of scope for v2.0 to optimize resources. Simple collision warnings will remain as per v1.1.
-- **NO "Saved Filters" (Presets):** These remain a target for future versions (v2.1+).
-- **NO support for other Taiga modules (User Stories, Tasks, Wiki, etc.)**.
-- **NO administrative features (e.g., creating projects, managing users)**.
-- **NO offline functionality or real-time auto-refresh**.
+* **NO Cloud Synchronization:** Larch remains a local-first application; no external backend for view synchronization will be implemented.
+* **NO Bulk Editing:** Managing multiple issues simultaneously remains out of scope.
+* **NO View Sharing:** Saved views are strictly local to the user's device.
+* **NO Real-time Auto-refresh:** Manual refresh with Toast feedback remains the standard.
 
 ---
 
@@ -59,27 +56,24 @@ The vision for Larch is to create a centralized, multi-project issue management 
 
 ### 3.1. User Persona
 
-- **"Alex, the Multi-Project Manager"**: Oversees 10+ projects. Values efficiency and a modern interface that allows viewing details via an overlay without losing the context of the main aggregated list. Alex needs to report bugs quickly by pasting screenshots and share specific issues with the team via direct links.
+* **"Alex, the Multi-Project Manager"**: Oversees 10+ projects. Alex needs to switch between different "battlefronts" (e.g., "Urgent", "Backend", "Frontend") multiple times a day and expects the application to remember exactly how they prefer to view each data segment.
 
-### 3.2. User Journey / Flow (v2.0)
+### 3.2. User Journey / Flow (v2.1)
 
-1. **Redesigned Login:** Entry point using layouts inspired by Google Stitch.
-2. **Navigation Hub:** A persistent **Sidebar** allows Alex to switch between "Projects" (selection) and "Dashboard" (triage).
-3. **The Dashboard (Triage):** An aggregated table with "Smart Default" filters.
-4. **Overlay Interaction:** Clicking an issue opens the **Sidebar Drawer (Overlay)**. The table remains visible underneath, allowing Alex to keep the list in sight while editing.
-5. **Issue Actions:** \* Alex clicks a "Link" icon to copy the direct Taiga URL for the current issue.
+1. **Navigation:** Alex opens Larch and lands on the default **"Active Triage"** view.
+2. **Configuration:** Alex applies specific filters for a client and two specific issue statuses.
+3. **Creation:** Upon detecting changes, the filter bar displays the **"Save as new view"** button. Alex names it "Client X - Pending".
+4. **Daily Use:** Alex uses the **View Switcher** in the header to jump instantly between "Active Triage" and "Client X - Pending".
+5. **Modification:** If Alex changes a filter in "Client X", the **Dirty State** indicator (an asterisk next to the name) activates. Alex clicks the primary **"Save"** button to update the persisted view.
+6. **Cleanup:** Alex hovers over an old view in the switcher and clicks the **trash icon** to remove it.
 
-- Alex pastes a screenshot directly from the clipboard into the description or a comment; Larch uploads it and inserts the markdown.
+### 3.3. UX Acceptance Criteria
 
-6. **Data Feedback:** Every background action (like Refresh or Uploads) triggers a **Toast notification** with results.
-
-### 3.3. User Stories
-
-- **Auth & Nav:** - _As Alex,_ I want a modern, sidebar-driven navigation to switch instantly between project setup and my triage dashboard.
-- **Issue Management:**
-- _As Alex,_ I want to edit an issue in an overlay sidebar so I don't lose my place in the aggregated list.
-- _As Alex,_ I want to paste screenshots directly into comments so I can report visual bugs much faster.
-- _As Alex,_ I want to copy the direct Taiga link of an issue with one click to share it with my team.
+* **View Switcher:** Must appear as a clean dropdown menu; system-level views (Active Triage) must be locked and non-deletable.
+* **Split Button:** Only visible in the filter bar when changes are pending or a customizable view is active.
+* **Naming Modal:** Minimalist dialog that validates the name input is not empty.
+* **Dirty State:** Resets immediately upon saving or when switching to a different view.
+* **Ordering:** Views are ordered by `last_used` timestamp in the switcher for quick access.
 
 ---
 
@@ -91,57 +85,57 @@ The vision for Larch is to create a centralized, multi-project issue management 
 `|`
 `+-- [ Frontend (Svelte 5 + TS) ]  <-- (Tauri Commands) --> [ Backend (Rust) ]`
 `|       |      (Reference: Stitch & OpenCode)              |`
-`|       +-- (Svelte Stores & Clipboard API)            +-- [ SQLite DB (SeaORM) ]`
-`|                                                              |`
-`|                                                      +-- [ OS Keychain (keyring-rs) ]`
-`|                                                              |`
+`|       +-- (Local State Store: Active View)           +-- [ SQLite DB (SeaORM) ]`
+`|                                                              |   |-- Table: saved_views`
 `|                                                      +-- [ Taiga API Service ]`
 
 ### 4.2. Technology Stack
 
-- **Framework:** Tauri v2.
-- **Backend:** Rust.
-- **Frontend:** Svelte 5 + TypeScript.
-- **Design Reference:** Google Stitch (AI-generated HTML/CSS as development source).
-- **Implementation Support:** OpenCode for advanced frontend logic and feature refinement.
-- **Styling:** Tailwind CSS.
-- **Database:** SQLite via **SeaORM**.
-- **Security:** `keyring-rs` for token management.
+* **Framework:** Tauri v2.
+* **Backend:** Rust.
+* **Frontend:** Svelte 5 + TypeScript.
+* **Design Reference:** Google Stitch (AI-generated HTML/CSS).
+* **Styling:** Tailwind CSS.
+* **Database:** SQLite via **SeaORM**.
+* **Security:** `keyring-rs` for token management.
 
-### 4.3. Attachment Upload Logic
+### 4.3. Data Schema (SeaORM Entities)
 
-1. **Frontend:** Intercept the `paste` event in the text editor.
-2. **Processing:** Extract `Blob` data if the clipboard contains an image.
-3. **Tauri Bridge:** Send the file data to the Rust backend via a dedicated command.
-4. **API:** The Rust backend performs a `POST` to Taiga's attachment endpoint and returns the image URL.
-5. **Completion:** The frontend appends the appropriate Markdown `![](url)` to the text area and triggers a Toast notification.
+The `SavedView` entity is added to the SQLite database:
+
+* `id`: UUID (Primary Key).
+* `name`: String (User-defined name).
+* `filter_data`: Json (Object containing `project_ids`, `status_ids`, `assignees`, and inclusion/exclusion logic).
+* `is_default`: Boolean (Indicates the startup view).
+* `last_used`: DateTime (Timestamp for ordering).
+
+### 4.4. Backend Logic & Validation
+
+1. **Sanitization:** Before returning a saved view to the frontend, the Rust backend verifies that persisted project and status IDs still exist in the local configuration.
+2. **Dirty Detection:** Deep comparison of the filter state received from the frontend against the persisted version to toggle the modification flag.
+3. **CRUD Operations:** Atomic operations to create, update, and delete views in SQLite.
 
 ---
 
-## 5. Implementation & Rollout Plan (v2.0)
+## 5. Implementation & Rollout Plan (v2.1)
 
 ### 5.1. Milestones
 
-1. **M1: Login Redesign.** Apply Stitch-generated layout to the login screen.
-2. **M2: Main Flow Redesign.**
-
-- 2.1 **Sidebar Navigation:** Implement persistent navigation between projects and dashboard.
-- 2.2 **Project Selector:** Redesign the project selection UI.
-- 2.3 **Dashboard:** Redesign aggregated issue table and advanced filter UI.
-
-3. **M3: Detail Sidebar (Overlay).** Implement the overlay sidebar component and the "Copy Link" functionality.
-4. **M4: Attachment Management.** Implement the screenshot pasting logic and automatic upload to the Taiga API using **OpenCode** logic.
+1. **M1: Persistence Layer (Backend):** Create the SeaORM entity and Tauri commands for `saved_views` management.
+2. **M2: Header View Switcher:** Implement the interactive dropdown in the header based on Stitch layouts.
+3. **M3: Filter Bar Evolution:** Implement the dynamic Split Button and Dirty State logic in Svelte 5.
+4. **M4: Modal & UX Polish:** Minimalist naming dialog and Toast feedback for save/delete operations.
 
 ### 5.2. Testing Strategy
 
-- **Rust Unit Tests:** Critical business logic, API service parsing for attachments, and link generation.
-- **Integration Tests:** Tauri command chain from Svelte 5 to Rust, specifically for clipboard data handling.
-- **Manual E2E:** Focus on sidebar navigation state, screenshot pasting across different OS, and link sharing accuracy.
+* **Rust Unit Tests:** Serialization of filter JSON and ID validation logic.
+* **Component Testing (Svelte):** Verify Dirty State reactivity to filter changes.
+* **Manual E2E:** Test "Save as new" duplicates, deletion of views, and persistence after application restarts.
 
 ---
 
 ## 6. Risks & Open Questions
 
-- **Risk 1 (High):** Complexity of translating Stitch-generated HTML/CSS into reactive Svelte 5 components while maintaining consistency.
-- **Risk 2 (Medium):** Handling different image formats from the clipboard across various operating systems (Windows vs. macOS).
-- **Risk 3 (Medium):** Managing UI focus and scroll states when the sidebar overlay is open above the main table.
+* **Risk 1 (High):** Complexity of translating Stitch-generated HTML/CSS into reactive Svelte 5 components while maintaining consistency.
+* **Risk 2 (Medium):** Data inconsistency if Taiga modifies project or status IDs. *Mitigation:* Implement backend sanitization as described in section 4.4.
+* **Risk 3 (Medium):** UI real estate for the Split Button on small window sizes. *Mitigation:* Design the button to collapse text and show only icons if space is restricted.

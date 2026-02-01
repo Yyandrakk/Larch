@@ -233,5 +233,13 @@
 		"shareCopied": "Issue URL copied to clipboard",
 		"shareError": "Failed to copy URL",
 		"blocked": "Blocked"
+	},
+	"views": {
+		"title": "Saved Views",
+		"save": "Save View",
+		"saveAs": "Save as New View",
+		"delete": "Delete View",
+		"namePlaceholder": "View name...",
+		"deleteConfirm": "Are you sure you want to delete this view?"
 	}
 }
