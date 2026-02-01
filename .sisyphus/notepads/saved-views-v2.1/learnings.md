@@ -102,3 +102,23 @@
 - ✅ Follows project conventions (imports, error handling, logging)
 - ✅ Exported from `commands/mod.rs`
 
+
+## Task 9: Register Commands and Add Frontend Constants
+- Registered 7 new view-related commands in `src-tauri/src/lib.rs`.
+- Added corresponding constants to `src/lib/commands.svelte.ts`.
+- Added i18n keys for view management in `src/lib/locales/en.json`.
+- **Encountered and Fixed**: Rust compilation errors where `saved_views::Model` was missing `serde::Serialize` and `serde::Deserialize`. Added these derives to the entity model.
+- Verified that both Rust and Frontend codebases are error-free.
+
+
+## Task 13: Build SaveViewDialog Component (2026-02-01)
+- Created `src/lib/components/dashboard/SaveViewDialog.svelte` using shadcn-svelte `Dialog`, `Input`, and `Button` components.
+- Implemented bindable `open` prop and `onSave` callback prop.
+- Added input field with `autofocus` and `Enter` key support for saving.
+- Validation: Disabled Save button if trimmed name is empty.
+- Used i18n keys from `views` and `common` namespaces (`views.saveAs`, `views.namePlaceholder`, `views.save`, `common.cancel`).
+- Followed Svelte 5 runes (`$state`, `$props`, `$bindable`, `$effect`).
+- Verified that `pnpm check` passes (no errors in the new component).
+
+- Implemented `filterUtils.ts` with `normalizeFilter` and `deepEqual` to handle stable `FilterObject` comparison by sorting ID arrays and normalizing boolean flags.
+- Used `JSON.stringify` on normalized objects for a simple but effective deep equality check without external dependencies.
