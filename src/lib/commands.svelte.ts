@@ -37,3 +37,12 @@ export const CMD_DELETE_LOCAL_DRAFT = 'delete_local_draft';
 
 // App Commands
 export const CMD_FORCE_CLOSE_APP = 'force_close_app';
+
+// View Commands
+export const CMD_LIST_VIEWS = 'list_views';
+export const CMD_GET_VIEW = 'get_view';
+export const CMD_CREATE_VIEW = 'create_view';
+export const CMD_UPDATE_VIEW = 'update_view';
+export const CMD_DELETE_VIEW = 'delete_view';
+export const CMD_SWITCH_VIEW = 'switch_view';
+export const CMD_SET_DEFAULT_VIEW = 'set_default_view';
