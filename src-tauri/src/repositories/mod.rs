@@ -1,4 +1,4 @@
-use crate::entities::{config, drafts};
+use crate::entities::{config, drafts, saved_views};
 use crate::error::Result;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 
@@ -11,6 +11,21 @@ pub trait Repository: Send + Sync {
     async fn save_draft(&self, related_id: &str, draft_type: &str, content: &str) -> Result<()>;
     async fn get_draft(&self, related_id: &str, draft_type: &str) -> Result<Option<String>>;
     async fn delete_draft(&self, related_id: &str, draft_type: &str) -> Result<()>;
+
+    // SavedView operations
+    async fn list_views(&self) -> Result<Vec<saved_views::Model>>;
+    async fn get_view(&self, id: i32) -> Result<Option<saved_views::Model>>;
+    async fn create_view(
+        &self,
+        name: &str,
+        filter_data: &str,
+        is_system: bool,
+        is_default: bool,
+    ) -> Result<saved_views::Model>;
+    async fn update_view(&self, id: i32, name: &str, filter_data: &str) -> Result<()>;
+    async fn delete_view(&self, id: i32) -> Result<()>;
+    async fn touch_view(&self, id: i32) -> Result<()>;
+    async fn set_default_view(&self, id: i32) -> Result<()>;
 }
 
 #[derive(Clone)]
