@@ -118,3 +118,18 @@ pub async fn set_default_view(
         e
     })
 }
+
+/// Sanitizes all views by removing references to IDs that no longer exist.
+#[tauri::command]
+pub async fn sanitize_views(
+    valid_project_ids: Option<Vec<i64>>,
+    valid_status_ids: Option<Vec<i64>>,
+    repository: tauri::State<'_, SqliteRepository>,
+) -> Result<()> {
+    crate::services::view_sanitizer::sanitize_all_views(
+        &repository as &SqliteRepository,
+        valid_project_ids.as_deref(),
+        valid_status_ids.as_deref(),
+    )
+    .await
+}

@@ -140,7 +140,8 @@ pub fn run() {
             commands::view_commands::update_view,
             commands::view_commands::delete_view,
             commands::view_commands::switch_view,
-            commands::view_commands::set_default_view
+            commands::view_commands::set_default_view,
+            commands::view_commands::sanitize_views
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

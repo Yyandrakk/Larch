@@ -21,11 +21,13 @@ struct FilterData {
 
 pub async fn sanitize_all_views<R: Repository>(
     repo: &R,
-    valid_project_ids: &[i64],
-    valid_status_ids: &[i64],
+    valid_project_ids: Option<&[i64]>,
+    valid_status_ids: Option<&[i64]>,
 ) -> Result<()> {
-    let valid_projects: HashSet<i64> = valid_project_ids.iter().copied().collect();
-    let valid_statuses: HashSet<i64> = valid_status_ids.iter().copied().collect();
+    let valid_projects: Option<HashSet<i64>> =
+        valid_project_ids.map(|ids| ids.iter().copied().collect());
+    let valid_statuses: Option<HashSet<i64>> =
+        valid_status_ids.map(|ids| ids.iter().copied().collect());
 
     let views = repo.list_views().await?;
 
@@ -45,19 +47,23 @@ pub async fn sanitize_all_views<R: Repository>(
         let mut changed = false;
         let mut new_filter = filter_data;
 
-        if let Some(ref mut project_ids) = new_filter.project_ids {
-            let original_len = project_ids.len();
-            project_ids.retain(|id| valid_projects.contains(id));
-            if project_ids.len() != original_len {
-                changed = true;
+        if let Some(ref valid_projects) = valid_projects {
+            if let Some(ref mut project_ids) = new_filter.project_ids {
+                let original_len = project_ids.len();
+                project_ids.retain(|id| valid_projects.contains(id));
+                if project_ids.len() != original_len {
+                    changed = true;
+                }
             }
         }
 
-        if let Some(ref mut status_ids) = new_filter.status_ids {
-            let original_len = status_ids.len();
-            status_ids.retain(|id| valid_statuses.contains(id));
-            if status_ids.len() != original_len {
-                changed = true;
+        if let Some(ref valid_statuses) = valid_statuses {
+            if let Some(ref mut status_ids) = new_filter.status_ids {
+                let original_len = status_ids.len();
+                status_ids.retain(|id| valid_statuses.contains(id));
+                if status_ids.len() != original_len {
+                    changed = true;
+                }
             }
         }
 
@@ -121,7 +127,7 @@ mod tests {
         let valid_projects = vec![1, 2];
         let valid_statuses = vec![10];
 
-        sanitize_all_views(&repo, &valid_projects, &valid_statuses)
+        sanitize_all_views(&repo, Some(&valid_projects), Some(&valid_statuses))
             .await
             .unwrap();
 
@@ -147,7 +153,7 @@ mod tests {
             .await
             .unwrap();
 
-        sanitize_all_views(&repo, &[], &[]).await.unwrap();
+        sanitize_all_views(&repo, Some(&[]), Some(&[])).await.unwrap();
 
         let unchanged_view = repo.get_view(system_view.id).await.unwrap().unwrap();
         assert_eq!(unchanged_view.filter_data, filter_with_orphans);
@@ -168,7 +174,7 @@ mod tests {
             .await
             .unwrap();
 
-        sanitize_all_views(&repo, &[1, 2], &[10, 20])
+        sanitize_all_views(&repo, Some(&[1, 2]), Some(&[10, 20]))
             .await
             .unwrap();
 
@@ -194,7 +200,7 @@ mod tests {
             .await
             .unwrap();
 
-        sanitize_all_views(&repo, &[], &[]).await.unwrap();
+        sanitize_all_views(&repo, Some(&[]), Some(&[])).await.unwrap();
 
         let sanitized_view = repo.get_view(view.id).await.unwrap().unwrap();
         let sanitized_filter: FilterData = serde_json::from_str(&sanitized_view.filter_data).unwrap();
