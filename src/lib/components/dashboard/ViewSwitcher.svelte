@@ -1,9 +1,10 @@
 <script lang="ts">
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { Button } from '$lib/components/ui/button';
-	import { ChevronDown, Lock, Check, Trash2 } from '@lucide/svelte';
+	import { Check, ChevronDown, Lock, Trash2 } from '@lucide/svelte';
 	import type { SavedView } from '$lib/types';
 	import { t } from 'svelte-i18n';
+	import { fade } from 'svelte/transition';
 
 	let {
 		views,
@@ -38,19 +39,25 @@
 				{...props}
 				data-testid="view-switcher-trigger"
 			>
-				<span class="truncate">
-					{currentView ? currentView.name : $t('dashboard.views.select_view')}
+				<div class="flex items-center gap-2 truncate">
+					<span class="truncate">
+						{currentView ? currentView.name : $t('views.select_view')}
+					</span>
 					{#if isDirty}
-						<span class="text-muted-foreground ml-1">*</span>
+						<div
+							transition:fade={{ duration: 200 }}
+							class="h-2 w-2 shrink-0 animate-pulse rounded-full bg-orange-500"
+							title={$t('views.unsaved_changes')}
+						></div>
 					{/if}
-				</span>
+				</div>
 				<ChevronDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
 			</Button>
 		{/snippet}
 	</DropdownMenu.Trigger>
 	<DropdownMenu.Content class="w-[200px]" align="start">
 		<DropdownMenu.Group>
-			<DropdownMenu.Label>{$t('dashboard.views.title')}</DropdownMenu.Label>
+			<DropdownMenu.Label>{$t('views.title')}</DropdownMenu.Label>
 			<DropdownMenu.Separator />
 			{#each sortedViews as view (view.id)}
 				<DropdownMenu.Item
