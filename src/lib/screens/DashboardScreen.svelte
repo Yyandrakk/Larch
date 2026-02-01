@@ -278,6 +278,37 @@
 		}
 	}
 
+	$effect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+				const activeElement = document.activeElement;
+				const isInput =
+					activeElement instanceof HTMLInputElement ||
+					activeElement instanceof HTMLTextAreaElement ||
+					activeElement?.closest('[role="dialog"]');
+
+				if (isInput) return;
+
+				e.preventDefault();
+
+				if (e.shiftKey) {
+					handleSaveAsNew();
+				} else if (isDirty) {
+					if (isSystemView) {
+						handleSaveAsNew();
+					} else {
+						handleSave();
+					}
+				}
+			}
+		};
+
+		window.addEventListener('keydown', handleKeyDown);
+		return () => {
+			window.removeEventListener('keydown', handleKeyDown);
+		};
+	});
+
 	onMount(() => {
 		loadData();
 	});
