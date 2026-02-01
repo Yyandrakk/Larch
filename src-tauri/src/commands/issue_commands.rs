@@ -1,7 +1,7 @@
 use crate::domain::issue_detail::{HistoryEntry, IssueDetail};
 use crate::error::Result;
 use crate::repositories::{Repository, SqliteRepository};
-use crate::services::credentials;
+use crate::services::{credentials, token_refresh};
 use taiga_client::TaigaClient;
 
 /// Get detailed issue information by ID
@@ -11,19 +11,20 @@ pub async fn get_issue_detail(
     client: tauri::State<'_, TaigaClient>,
     issue_id: i64,
 ) -> Result<IssueDetail> {
-    let token = credentials::get_api_token()?;
+    async fn fetch(client: &TaigaClient, issue_id: i64) -> Result<IssueDetail> {
+        let token = credentials::get_api_token()?;
+        let issue_dto = client.get_issue(&token, issue_id).await?;
+        Ok(IssueDetail::from_dto(issue_dto))
+    }
 
-    // Fetch issue detail from Taiga API
-    let issue_dto = client.get_issue(&token, issue_id).await?;
-
-    // Convert to domain model
-    let issue_detail = IssueDetail::from_dto(issue_dto);
-
-    // TODO: In the future, we could resolve type/severity/priority names here
-    // by fetching project metadata and looking up the IDs
-    // For now, the frontend can display "Type #X" if no name is available
-
-    Ok(issue_detail)
+    match fetch(&client, issue_id).await {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(&client, issue_id).await
+        }
+        result => result,
+    }
 }
 
 /// Get issue history (comments and changes)
@@ -32,19 +33,25 @@ pub async fn get_issue_history(
     client: tauri::State<'_, TaigaClient>,
     issue_id: i64,
 ) -> Result<Vec<HistoryEntry>> {
-    let token = credentials::get_api_token()?;
+    async fn fetch(client: &TaigaClient, issue_id: i64) -> Result<Vec<HistoryEntry>> {
+        let token = credentials::get_api_token()?;
+        let history_dto = client.get_issue_history(&token, issue_id).await?;
+        let entries: Vec<HistoryEntry> = history_dto
+            .iter()
+            .filter(|h| !h.is_hidden.unwrap_or(false))
+            .map(|h| h.into())
+            .collect();
+        Ok(entries)
+    }
 
-    // Fetch history from Taiga API
-    let history_dto = client.get_issue_history(&token, issue_id).await?;
-
-    // Convert to domain models, filtering out hidden entries
-    let entries: Vec<HistoryEntry> = history_dto
-        .iter()
-        .filter(|h| !h.is_hidden.unwrap_or(false))
-        .map(|h| h.into())
-        .collect();
-
-    Ok(entries)
+    match fetch(&client, issue_id).await {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(&client, issue_id).await
+        }
+        result => result,
+    }
 }
 
 /// Change the status of an issue
@@ -56,24 +63,36 @@ pub async fn change_issue_status(
     status_id: i64,
     version: i64,
 ) -> Result<IssueDetail> {
-    let token = credentials::get_api_token()?;
+    async fn fetch(
+        client: &TaigaClient,
+        issue_id: i64,
+        status_id: i64,
+        version: i64,
+    ) -> Result<IssueDetail> {
+        let token = credentials::get_api_token()?;
+        let request = taiga_client::models::PatchIssueRequest {
+            version,
+            status: Some(status_id),
+            comment: None,
+            description: None,
+            assigned_to: None,
+            priority: None,
+            severity: None,
+            type_: None,
+            tags: None,
+        };
+        let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+        Ok(IssueDetail::from_dto(updated_issue_dto))
+    }
 
-    // Build the patch request
-    let request = taiga_client::models::PatchIssueRequest {
-        version,
-        status: Some(status_id),
-        comment: None,
-        description: None,
-        assigned_to: None,
-    };
-
-    // Call the API - will return VersionConflict on 412
-    let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
-
-    // Convert to domain model
-    let issue_detail = IssueDetail::from_dto(updated_issue_dto);
-
-    Ok(issue_detail)
+    match fetch(&client, issue_id, status_id, version).await {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(&client, issue_id, status_id, version).await
+        }
+        result => result,
+    }
 }
 
 /// Add a comment to an issue
@@ -85,24 +104,36 @@ pub async fn add_issue_comment(
     comment: String,
     version: i64,
 ) -> Result<IssueDetail> {
-    let token = credentials::get_api_token()?;
+    async fn fetch(
+        client: &TaigaClient,
+        issue_id: i64,
+        comment: &str,
+        version: i64,
+    ) -> Result<IssueDetail> {
+        let token = credentials::get_api_token()?;
+        let request = taiga_client::models::PatchIssueRequest {
+            version,
+            status: None,
+            comment: Some(comment.to_string()),
+            description: None,
+            assigned_to: None,
+            priority: None,
+            severity: None,
+            type_: None,
+            tags: None,
+        };
+        let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+        Ok(IssueDetail::from_dto(updated_issue_dto))
+    }
 
-    // Build the patch request with only the comment
-    let request = taiga_client::models::PatchIssueRequest {
-        version,
-        status: None,
-        comment: Some(comment),
-        description: None,
-        assigned_to: None,
-    };
-
-    // Call the API - will return VersionConflict on 412
-    let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
-
-    // Convert to domain model
-    let issue_detail = IssueDetail::from_dto(updated_issue_dto);
-
-    Ok(issue_detail)
+    match fetch(&client, issue_id, &comment, version).await {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(&client, issue_id, &comment, version).await
+        }
+        result => result,
+    }
 }
 
 /// Commit a description change from local draft to Taiga API
@@ -115,8 +146,6 @@ pub async fn commit_issue_description(
     issue_id: i64,
     version: i64,
 ) -> Result<IssueDetail> {
-    let token = credentials::get_api_token()?;
-
     // Read the draft from the local database
     let related_id = format!("issue_{}", issue_id);
     let draft_type = "description";
@@ -132,27 +161,43 @@ pub async fn commit_issue_description(
         version
     );
 
-    // Build the patch request with the description
-    let request = taiga_client::models::PatchIssueRequest {
-        version,
-        status: None,
-        comment: None,
-        description: Some(description),
-        assigned_to: None,
-    };
+    async fn fetch(
+        client: &TaigaClient,
+        issue_id: i64,
+        description: &str,
+        version: i64,
+    ) -> Result<IssueDetail> {
+        let token = credentials::get_api_token()?;
+        let request = taiga_client::models::PatchIssueRequest {
+            version,
+            status: None,
+            comment: None,
+            description: Some(description.to_string()),
+            assigned_to: None,
+            priority: None,
+            severity: None,
+            type_: None,
+            tags: None,
+        };
+        let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+        Ok(IssueDetail::from_dto(updated_issue_dto))
+    }
 
-    // Call the API - will return VersionConflict on 412
-    let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+    let result = match fetch(&client, issue_id, &description, version).await {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(&client, issue_id, &description, version).await
+        }
+        result => result,
+    }?;
 
     // On success, delete the local draft
     repository.delete_draft(&related_id, draft_type).await?;
 
     log::info!("Successfully committed description for issue {}", issue_id);
 
-    // Convert to domain model
-    let issue_detail = IssueDetail::from_dto(updated_issue_dto);
-
-    Ok(issue_detail)
+    Ok(result)
 }
 
 /// Change the assignee of an issue
@@ -165,22 +210,307 @@ pub async fn change_issue_assignee(
     assignee_id: Option<i64>,
     version: i64,
 ) -> Result<IssueDetail> {
-    let token = credentials::get_api_token()?;
+    async fn fetch(
+        client: &TaigaClient,
+        issue_id: i64,
+        assignee_id: Option<i64>,
+        version: i64,
+    ) -> Result<IssueDetail> {
+        let token = credentials::get_api_token()?;
+        let request = taiga_client::models::PatchIssueRequest {
+            version,
+            status: None,
+            comment: None,
+            description: None,
+            assigned_to: Some(assignee_id),
+            priority: None,
+            severity: None,
+            type_: None,
+            tags: None,
+        };
+        let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+        Ok(IssueDetail::from_dto(updated_issue_dto))
+    }
 
-    // Build the patch request with the new assignee
-    let request = taiga_client::models::PatchIssueRequest {
-        version,
-        status: None,
-        comment: None,
-        description: None,
-        assigned_to: Some(assignee_id),
-    };
+    match fetch(&client, issue_id, assignee_id, version).await {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(&client, issue_id, assignee_id, version).await
+        }
+        result => result,
+    }
+}
 
-    // Call the API - will return VersionConflict on 412
-    let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+#[tauri::command]
+pub async fn change_issue_priority(
+    client: tauri::State<'_, TaigaClient>,
+    issue_id: i64,
+    priority_id: i64,
+    version: i64,
+) -> Result<IssueDetail> {
+    async fn fetch(
+        client: &TaigaClient,
+        issue_id: i64,
+        priority_id: i64,
+        version: i64,
+    ) -> Result<IssueDetail> {
+        let token = credentials::get_api_token()?;
+        let request = taiga_client::models::PatchIssueRequest {
+            version,
+            status: None,
+            comment: None,
+            description: None,
+            assigned_to: None,
+            priority: Some(priority_id),
+            severity: None,
+            type_: None,
+            tags: None,
+        };
+        let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+        Ok(IssueDetail::from_dto(updated_issue_dto))
+    }
 
-    // Convert to domain model
-    let issue_detail = IssueDetail::from_dto(updated_issue_dto);
+    match fetch(&client, issue_id, priority_id, version).await {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(&client, issue_id, priority_id, version).await
+        }
+        result => result,
+    }
+}
 
-    Ok(issue_detail)
+#[tauri::command]
+pub async fn change_issue_severity(
+    client: tauri::State<'_, TaigaClient>,
+    issue_id: i64,
+    severity_id: i64,
+    version: i64,
+) -> Result<IssueDetail> {
+    async fn fetch(
+        client: &TaigaClient,
+        issue_id: i64,
+        severity_id: i64,
+        version: i64,
+    ) -> Result<IssueDetail> {
+        let token = credentials::get_api_token()?;
+        let request = taiga_client::models::PatchIssueRequest {
+            version,
+            status: None,
+            comment: None,
+            description: None,
+            assigned_to: None,
+            priority: None,
+            severity: Some(severity_id),
+            type_: None,
+            tags: None,
+        };
+        let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+        Ok(IssueDetail::from_dto(updated_issue_dto))
+    }
+
+    match fetch(&client, issue_id, severity_id, version).await {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(&client, issue_id, severity_id, version).await
+        }
+        result => result,
+    }
+}
+
+#[tauri::command]
+pub async fn change_issue_type(
+    client: tauri::State<'_, TaigaClient>,
+    issue_id: i64,
+    type_id: i64,
+    version: i64,
+) -> Result<IssueDetail> {
+    async fn fetch(
+        client: &TaigaClient,
+        issue_id: i64,
+        type_id: i64,
+        version: i64,
+    ) -> Result<IssueDetail> {
+        let token = credentials::get_api_token()?;
+        let request = taiga_client::models::PatchIssueRequest {
+            version,
+            status: None,
+            comment: None,
+            description: None,
+            assigned_to: None,
+            priority: None,
+            severity: None,
+            type_: Some(type_id),
+            tags: None,
+        };
+        let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+        Ok(IssueDetail::from_dto(updated_issue_dto))
+    }
+
+    match fetch(&client, issue_id, type_id, version).await {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(&client, issue_id, type_id, version).await
+        }
+        result => result,
+    }
+}
+
+#[tauri::command]
+pub async fn update_issue_tags(
+    client: tauri::State<'_, TaigaClient>,
+    issue_id: i64,
+    tags: Vec<(String, Option<String>)>,
+    version: i64,
+) -> Result<IssueDetail> {
+    let tags_json: Vec<serde_json::Value> = tags
+        .iter()
+        .map(|(name, color)| serde_json::json!([name, color]))
+        .collect();
+
+    async fn fetch(
+        client: &TaigaClient,
+        issue_id: i64,
+        tags_json: Vec<serde_json::Value>,
+        version: i64,
+    ) -> Result<IssueDetail> {
+        let token = credentials::get_api_token()?;
+        let request = taiga_client::models::PatchIssueRequest {
+            version,
+            status: None,
+            comment: None,
+            description: None,
+            assigned_to: None,
+            priority: None,
+            severity: None,
+            type_: None,
+            tags: Some(serde_json::Value::Array(tags_json)),
+        };
+        let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+        Ok(IssueDetail::from_dto(updated_issue_dto))
+    }
+
+    match fetch(&client, issue_id, tags_json.clone(), version).await {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(&client, issue_id, tags_json, version).await
+        }
+        result => result,
+    }
+}
+
+#[tauri::command]
+pub async fn upload_issue_attachment(
+    client: tauri::State<'_, TaigaClient>,
+    project_id: i64,
+    issue_id: i64,
+    file_name: String,
+    mime_type: Option<String>,
+    file_data: Vec<u8>,
+) -> Result<crate::domain::issue_detail::Attachment> {
+    log::debug!(
+        "Command upload_issue_attachment: project={}, issue={}, type={:?}, size={} bytes",
+        project_id,
+        issue_id,
+        mime_type,
+        file_data.len()
+    );
+
+    async fn fetch(
+        client: &TaigaClient,
+        project_id: i64,
+        issue_id: i64,
+        file_name: &str,
+        mime_type: Option<String>,
+        file_data: &[u8],
+    ) -> Result<crate::domain::issue_detail::Attachment> {
+        let token = credentials::get_api_token()?;
+        let attachment_dto = client
+            .upload_issue_attachment(
+                &token,
+                project_id,
+                issue_id,
+                file_name.to_string(),
+                mime_type,
+                file_data.to_vec(),
+            )
+            .await?;
+        Ok((&attachment_dto).into())
+    }
+
+    match fetch(
+        &client,
+        project_id,
+        issue_id,
+        &file_name,
+        mime_type.clone(),
+        &file_data,
+    )
+    .await
+    {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(
+                &client, project_id, issue_id, &file_name, mime_type, &file_data,
+            )
+            .await
+        }
+        result => result,
+    }
+}
+
+#[tauri::command]
+pub async fn delete_issue_attachment(
+    client: tauri::State<'_, TaigaClient>,
+    attachment_id: i64,
+) -> Result<()> {
+    async fn fetch(client: &TaigaClient, attachment_id: i64) -> Result<()> {
+        let token = credentials::get_api_token()?;
+        client
+            .delete_issue_attachment(&token, attachment_id)
+            .await?;
+        Ok(())
+    }
+
+    match fetch(&client, attachment_id).await {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(&client, attachment_id).await
+        }
+        result => result,
+    }
+}
+
+#[tauri::command]
+pub async fn get_issue_attachments(
+    client: tauri::State<'_, TaigaClient>,
+    project_id: i64,
+    issue_id: i64,
+) -> Result<Vec<crate::domain::issue_detail::Attachment>> {
+    async fn fetch(
+        client: &TaigaClient,
+        project_id: i64,
+        issue_id: i64,
+    ) -> Result<Vec<crate::domain::issue_detail::Attachment>> {
+        let token = credentials::get_api_token()?;
+        let attachments_dto = client
+            .list_issue_attachments(&token, project_id, issue_id)
+            .await?;
+        Ok(attachments_dto.iter().map(|a| a.into()).collect())
+    }
+
+    match fetch(&client, project_id, issue_id).await {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(&client, project_id, issue_id).await
+        }
+        result => result,
+    }
 }

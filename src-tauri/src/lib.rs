@@ -47,11 +47,69 @@ pub fn run() {
 
             Ok(())
         })
+        .register_asynchronous_uri_scheme_protocol("taiga-auth", move |ctx, request, responder| {
+            let app_handle = ctx.app_handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let uri = request.uri().to_string();
+                let target_url = uri.replace("taiga-auth://", "https://");
+
+                let client = match app_handle.try_state::<taiga_client::TaigaClient>() {
+                    Some(c) => c,
+                    None => {
+                        log::error!("TaigaClient not found in state when fetching {}", target_url);
+                        if let Ok(response) = tauri::http::Response::builder()
+                            .status(500)
+                            .header("Access-Control-Allow-Origin", "*")
+                            .body(vec![])
+                        {
+                            responder.respond(response);
+                        }
+                        return;
+                    }
+                };
+
+                let token = crate::services::credentials::get_api_token().ok();
+
+                match client.get_raw_resource(&target_url, token.as_ref()).await {
+                    Ok((bytes, mime)) => {
+                        match tauri::http::Response::builder()
+                            .header("Access-Control-Allow-Origin", "*")
+                            .header("Content-Type", mime)
+                            .body(bytes)
+                        {
+                            Ok(response) => responder.respond(response),
+                            Err(e) => {
+                                log::error!("Failed to build response for {}: {}", target_url, e);
+                                if let Ok(fallback) = tauri::http::Response::builder()
+                                    .status(500)
+                                    .body(vec![])
+                                {
+                                    responder.respond(fallback);
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("Failed to proxy image {}: {}", target_url, e);
+                        if let Ok(response) = tauri::http::Response::builder()
+                            .status(404)
+                            .body(vec![])
+                        {
+                            responder.respond(response);
+                        }
+                    }
+                }
+            });
+        })
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .invoke_handler(tauri::generate_handler![
             commands::auth_commands::login,
             commands::auth_commands::has_api_token,
             commands::auth_commands::logout,
+            commands::auth_commands::refresh_token,
+            commands::auth_commands::get_taiga_base_url,
+            commands::auth_commands::get_taiga_api_url,
             commands::user_commands::get_me,
             commands::project_commands::get_projects,
             commands::project_commands::list_issues,
@@ -68,6 +126,13 @@ pub fn run() {
             commands::draft_commands::delete_local_draft,
             commands::issue_commands::commit_issue_description,
             commands::issue_commands::change_issue_assignee,
+            commands::issue_commands::change_issue_priority,
+            commands::issue_commands::change_issue_severity,
+            commands::issue_commands::change_issue_type,
+            commands::issue_commands::update_issue_tags,
+            commands::issue_commands::upload_issue_attachment,
+            commands::issue_commands::delete_issue_attachment,
+            commands::issue_commands::get_issue_attachments,
             commands::app_commands::force_close_app
         ])
         .on_window_event(|window, event| {

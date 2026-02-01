@@ -9,6 +9,18 @@ export interface Issue {
 	assigned_to?: number;
 	assigned_to_name?: string;
 	assigned_to_photo?: string;
+	modified_date?: string;
+}
+
+export interface User {
+	id: number;
+	username: string;
+	full_name: string;
+	email: string;
+	photo: string | null;
+	big_photo: string | null;
+	gravatar_id: string;
+	is_active: boolean;
 }
 
 export interface Project {
@@ -17,6 +29,8 @@ export interface Project {
 	slug: string;
 	description: string;
 	owner: number;
+	created_date: string | null;
+	modified_date: string | null;
 }
 
 export interface IssueStatus {
@@ -38,12 +52,43 @@ export interface ProjectMetadata {
 	id: number;
 	statuses: IssueStatus[];
 	members: Member[];
+	priorities: Priority[];
+	severities: Severity[];
+	issue_types: IssueType[];
+	tags_colors: TagColor[];
+}
+
+export interface Priority {
+	id: number;
+	name: string;
+	color: string;
+	order: number;
+}
+
+export interface Severity {
+	id: number;
+	name: string;
+	color: string;
+	order: number;
+}
+
+export interface IssueType {
+	id: number;
+	name: string;
+	color: string;
+	order: number;
+}
+
+export interface TagColor {
+	name: string;
+	color?: string;
 }
 
 export interface FilterObject {
 	project_ids?: number[];
 	status_ids?: number[];
 	assignee_ids?: number[];
+	project_exclude?: boolean;
 	status_exclude?: boolean;
 	assignee_exclude?: boolean;
 }
@@ -136,6 +181,12 @@ export interface IssueDetail {
 	previous_issue?: IssueNeighbor;
 }
 
+export interface FieldChange {
+	field: string;
+	old_value?: string;
+	new_value?: string;
+}
+
 export interface HistoryEntry {
 	id: string;
 	user_id: number;
@@ -148,4 +199,5 @@ export interface HistoryEntry {
 	comment_html?: string;
 	is_deleted: boolean;
 	is_edited: boolean;
+	changes: FieldChange[];
 }

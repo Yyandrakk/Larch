@@ -5,26 +5,27 @@
 		CMD_GET_PROJECTS,
 		CMD_GET_AGGREGATED_ISSUES,
 		CMD_GET_SELECTED_PROJECTS,
-		CMD_GET_PROJECT_METADATA
+		CMD_GET_PROJECT_METADATA,
+		CMD_GET_ME
 	} from '$lib/commands.svelte';
 	import type { Issue, Project, FilterObject, ProjectMetadata } from '$lib/types';
 	import IssueTable from '$lib/components/dashboard/IssueTable.svelte';
 	import FilterBar from '$lib/components/dashboard/FilterBar.svelte';
 	import { IssueDetailSheet } from '$lib/components/issue-detail';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { RefreshCw, Search } from '@lucide/svelte';
+	import { Search, RefreshCw } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import { t } from 'svelte-i18n';
 
 	let issues = $state<Issue[]>([]);
 	let projects = $state<Project[]>([]);
+	let selectedProjectIds = $state<number[]>([]);
 	let metadata = $state<Record<number, ProjectMetadata>>({});
 	let filters = $state<FilterObject>({});
 	let loading = $state(false);
 	let searchQuery = $state('');
+	let currentUserId = $state<number | undefined>(undefined);
+	let userInteractedWithProjectFilter = $state(false);
 
-	// Issue Detail Sheet state
 	let selectedIssueId = $state<number | null>(null);
 	let sheetOpen = $state(false);
 
@@ -38,46 +39,51 @@
 		)
 	);
 
+	let activeProjectCount = $derived(filters.project_ids?.length || 0);
+
+	let activeProjects = $derived(
+		projects.filter((project) => selectedProjectIds.includes(project.id))
+	);
+
 	async function loadData() {
 		loading = true;
 		try {
-			// 1. Fetch all projects (for filter names)
 			projects = await invoke(CMD_GET_PROJECTS);
 
-			// 2. Fetch selected project IDs (for initial filter)
-			const selectedIds: number[] = await invoke(CMD_GET_SELECTED_PROJECTS);
+			try {
+				const me: { id: number } = await invoke(CMD_GET_ME);
+				currentUserId = me.id;
+			} catch {
+				currentUserId = undefined;
+			}
 
-			// Initialize filters with selected projects if not already set
+			const selectedIds: number[] = await invoke(CMD_GET_SELECTED_PROJECTS);
+			selectedProjectIds = selectedIds;
+
 			if (!filters.project_ids && selectedIds.length > 0) {
 				filters.project_ids = selectedIds;
 			}
 
-			// 3. Fetch metadata for selected projects
 			if (selectedIds.length > 0) {
 				metadata = await invoke(CMD_GET_PROJECT_METADATA, { projectIds: selectedIds });
 
-				// Intelligent Default: Include ONLY "Open" statuses if no status filter is active
-				// This implements the "Triage View" requirement more reliably than exclusion
 				if (!filters.status_ids) {
-					const openStatusSet = new Set<number>();
+					const closedStatusIds = new Set<number>();
 					Object.values(metadata).forEach((meta) => {
 						meta.statuses.forEach((status) => {
-							if (!status.is_closed) {
-								openStatusSet.add(status.id);
+							if (status.is_closed) {
+								closedStatusIds.add(status.id);
 							}
 						});
 					});
 
-					// If we found open statuses, filter by them.
-					// If we didn't (rare), we leave it empty which shows all (fallback).
-					if (openStatusSet.size > 0) {
-						filters.status_ids = Array.from(openStatusSet);
-						filters.status_exclude = false;
+					if (closedStatusIds.size > 0) {
+						filters.status_ids = Array.from(closedStatusIds);
+						filters.status_exclude = true;
 					}
 				}
 			}
 
-			// 4. Fetch issues
 			await refreshIssues();
 		} catch (error) {
 			console.error('Failed to load data:', error);
@@ -92,13 +98,11 @@
 		try {
 			issues = await invoke(CMD_GET_AGGREGATED_ISSUES, { filters });
 
-			// Refresh metadata if project selection changed
 			if (filters.project_ids && filters.project_ids.length > 0) {
-				// Optimization: only fetch if we don't have it? For now, fetch to be safe.
 				metadata = await invoke(CMD_GET_PROJECT_METADATA, { projectIds: filters.project_ids });
 			}
 
-			toast.success(`Loaded ${issues.length} issues`);
+			toast.success($t('dashboard.loadedCount', { values: { count: issues.length } }));
 		} catch (error) {
 			console.error('Failed to fetch issues:', error);
 			toast.error($t('errors.unknown'));
@@ -134,36 +138,71 @@
 	});
 </script>
 
-<div class="bg-background text-foreground flex h-full flex-col">
-	<div class="border-b">
-		<div class="flex h-16 items-center gap-4 px-4">
-			<h2 class="text-lg font-semibold">{$t('dashboard.title')}</h2>
-
-			<div class="relative max-w-md flex-1">
-				<Search class="text-muted-foreground absolute top-2.5 left-2.5 h-4 w-4" />
-				<Input
-					type="search"
-					placeholder={$t('dashboard.searchPlaceholder')}
-					class="pl-8"
-					bind:value={searchQuery}
-				/>
+<div class="flex flex-1 flex-col overflow-hidden">
+	<div class="px-6 pt-6 pb-2">
+		<div class="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+			<div class="flex flex-1 items-center gap-6">
+				<div>
+					<h2 class="text-2xl font-bold tracking-tight text-white">{$t('dashboard.allIssues')}</h2>
+					<p class="mt-1 text-sm text-[#93a9c8]">
+						{$t('dashboard.subtitlePrefix')}
+						{activeProjectCount}
+						{$t('dashboard.subtitleSuffix')}
+					</p>
+				</div>
+				<div class="relative hidden w-full max-w-sm sm:flex">
+					<Search class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#93a9c8]" />
+					<input
+						type="text"
+						placeholder={$t('dashboard.searchPlaceholder')}
+						bind:value={searchQuery}
+						class="w-full rounded-lg border border-transparent bg-[#1a2433] py-1.5 pr-4 pl-10 text-sm text-white placeholder-[#93a9c8] transition-all focus:border-[#243347] focus:bg-[#243347] focus:ring-0"
+					/>
+				</div>
 			</div>
-
-			<div class="ml-auto flex items-center space-x-4">
-				<Button variant="outline" size="icon" onclick={refreshIssues} disabled={loading}>
-					<RefreshCw class={loading ? 'animate-spin' : ''} />
-				</Button>
+			<div class="flex items-center gap-3">
+				<button
+					onclick={refreshIssues}
+					disabled={loading}
+					class="flex items-center gap-2 rounded-lg border border-[#243347] px-3 py-1.5 text-sm font-medium text-[#93a9c8] transition-colors hover:bg-[#243347] hover:text-white disabled:opacity-50"
+				>
+					<RefreshCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
+					{$t('dashboard.refresh')}
+				</button>
 			</div>
+		</div>
+
+		<div class="rounded-xl border border-[#243347] bg-[#161e2a] shadow-sm">
+			<FilterBar
+				projects={activeProjects}
+				{metadata}
+				{filters}
+				{currentUserId}
+				bind:userInteractedWithProjectFilter
+				onApply={handleFilterChange}
+			/>
 		</div>
 	</div>
 
-	<div class="flex-1 space-y-4 p-8 pt-6">
-		<FilterBar {projects} {metadata} {filters} onApply={handleFilterChange} />
+	<div class="flex-1 overflow-auto px-6 pb-6">
 		<IssueTable issues={filteredIssues} {projects} onIssueSelect={handleIssueSelect} />
+	</div>
+
+	<div
+		class="flex h-10 items-center justify-between border-t border-[#243347] bg-[#161e2a] px-6 text-xs text-[#93a9c8]"
+	>
+		<div class="flex items-center gap-2">
+			<span>
+				{$t('dashboard.showing')}
+				{filteredIssues.length}
+				{$t('dashboard.of')}
+				{issues.length}
+				{$t('dashboard.issues')}
+			</span>
+		</div>
 	</div>
 </div>
 
-<!-- Issue Detail Sheet -->
 <IssueDetailSheet
 	bind:issueId={selectedIssueId}
 	bind:open={sheetOpen}

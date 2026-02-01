@@ -3,32 +3,38 @@
 	import { invoke } from '@tauri-apps/api/core';
 	import { listen } from '@tauri-apps/api/event';
 	import { isLoading } from 'svelte-i18n';
-	import '$lib/i18n'; // Import to initialize
+	import '$lib/i18n';
 	import LoginScreen from '$lib/screens/LoginScreen.svelte';
 	import ProjectConfigurationScreen from '$lib/screens/ProjectConfigurationScreen.svelte';
 	import DashboardScreen from '$lib/screens/DashboardScreen.svelte';
-	import { Toaster } from 'svelte-sonner';
-	import { CMD_FORCE_CLOSE_APP } from '$lib/commands.svelte';
+	import { AppShell } from '$lib/components/layout';
+	import { Toaster, toast } from 'svelte-sonner';
+	import { CMD_FORCE_CLOSE_APP, CMD_GET_ME, CMD_GET_TAIGA_API_URL } from '$lib/commands.svelte';
 	import { hasPendingCommit, tryCommitPending } from '$lib/stores/pendingClose';
+	import { setCurrentUser, clearCurrentUser } from '$lib/stores/user.svelte';
+	import { setApiUrl } from '$lib/stores/config.svelte';
+	import { setSessionExpiredHandler } from '$lib/services/api';
+	import type { User } from '$lib/types';
 
-	type Screen = 'login' | 'config' | 'dashboard';
+	type Screen = 'login' | 'projects' | 'dashboard';
 	let currentScreen = $state<Screen>('login');
 	let isCheckingAuth = $state(true);
 
 	onMount(() => {
-		// Listen for app close request from backend
+		setSessionExpiredHandler(() => {
+			clearCurrentUser();
+			currentScreen = 'login';
+			toast.error('Session expired. Please log in again.');
+		});
+
 		const unlistenPromise = listen('app-close-requested', async () => {
 			try {
 				if (hasPendingCommit()) {
-					// Try to commit pending changes
 					const success = await tryCommitPending();
 					if (success) {
-						// Commit succeeded, safe to close
 						await invoke(CMD_FORCE_CLOSE_APP);
 					}
-					// If commit failed (conflict), don't close - the conflict modal will show
 				} else {
-					// No pending changes, safe to close
 					await invoke(CMD_FORCE_CLOSE_APP);
 				}
 			} catch (e) {
@@ -36,25 +42,26 @@
 			}
 		});
 
-		// Check auth status
 		(async () => {
 			try {
 				const hasToken = await invoke<boolean>('has_api_token');
 				if (hasToken) {
-					// Verify token by fetching user details
 					try {
-						await invoke('get_me');
-						// Token is valid, proceed
+						// Fetch API URL first so image rendering works
+						const apiUrl = await invoke<string>(CMD_GET_TAIGA_API_URL);
+						setApiUrl(apiUrl);
+
+						const user = await invoke<User>(CMD_GET_ME);
+						setCurrentUser(user);
 						const selectedIds = await invoke<number[]>('get_selected_projects');
 						if (selectedIds.length > 0) {
 							currentScreen = 'dashboard';
 						} else {
-							currentScreen = 'config';
+							currentScreen = 'projects';
 						}
 					} catch (e) {
 						console.error('Token validation failed:', e);
-						// Token invalid or network error. For now, assume invalid and go to login.
-						// TODO: Handle network error differently (retry?)
+						clearCurrentUser();
 						currentScreen = 'login';
 					}
 				} else {
@@ -74,39 +81,53 @@
 	});
 
 	function handleLoginSuccess() {
-		currentScreen = 'config';
+		currentScreen = 'projects';
 	}
 
 	function handleConfigContinue() {
 		currentScreen = 'dashboard';
+	}
+
+	function handleNavigate(screen: 'projects' | 'dashboard') {
+		currentScreen = screen;
+	}
+
+	function handleLogout() {
+		clearCurrentUser();
+		currentScreen = 'login';
 	}
 </script>
 
 <Toaster />
 
 {#if $isLoading || isCheckingAuth}
-	<main
-		class="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-4 select-none"
-	>
+	<main class="flex min-h-screen items-center justify-center bg-[#111821] p-4 select-none">
 		<p class="text-white">Loading...</p>
 	</main>
-{:else}
+{:else if currentScreen === 'login'}
 	<main
-		class="bg-background text-foreground min-h-screen"
-		class:flex={currentScreen === 'login'}
-		class:items-center={currentScreen === 'login'}
-		class:justify-center={currentScreen === 'login'}
-		class:bg-gradient-to-br={currentScreen === 'login'}
-		class:from-indigo-500={currentScreen === 'login'}
-		class:via-purple-500={currentScreen === 'login'}
-		class:to-pink-500={currentScreen === 'login'}
+		class="bg-background-dark relative flex min-h-screen items-center justify-center text-white"
 	>
-		{#if currentScreen === 'login'}
-			<LoginScreen onLoginSuccess={handleLoginSuccess} />
-		{:else if currentScreen === 'config'}
+		<div class="pointer-events-none fixed inset-0 z-0">
+			<div
+				class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-[#111821] to-[#111821]"
+			></div>
+			<div
+				class="absolute top-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent"
+			></div>
+		</div>
+		<LoginScreen onLoginSuccess={handleLoginSuccess} />
+	</main>
+{:else}
+	<AppShell
+		currentScreen={currentScreen as 'projects' | 'dashboard'}
+		onNavigate={handleNavigate}
+		onLogout={handleLogout}
+	>
+		{#if currentScreen === 'projects'}
 			<ProjectConfigurationScreen onContinue={handleConfigContinue} />
 		{:else if currentScreen === 'dashboard'}
 			<DashboardScreen />
 		{/if}
-	</main>
+	</AppShell>
 {/if}

@@ -24,6 +24,9 @@ pub enum TaigaClientError {
     #[error("Serialization error: {0}")]
     Serde(#[from] serde_json::Error),
 
+    #[error("Invalid MIME type: {0}")]
+    InvalidMimeType(String),
+
     #[error("Unknown error")]
     Unknown,
 }

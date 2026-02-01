@@ -7,7 +7,7 @@
 
 The initial architecture (see `architecture.md` prior to this ADR) proposed instantiating a single, stateless `TaigaClient` at application startup and injecting it into Tauri's managed state. This approach is simple and efficient.
 
-However, the product design (`doc-desing.md`) requires that the user can specify the Taiga API endpoint URL at the time of login. This conflicts with the startup-instantiation model, as the URL is not known when the application first launches. Relying on a pre-configured environment variable would violate this requirement and make the application less flexible for users with self-hosted Taiga instances.
+However, the product design (`doc-design.md`) requires that the user can specify the Taiga API endpoint URL at the time of login. This conflicts with the startup-instantiation model, as the URL is not known when the application first launches. Relying on a pre-configured environment variable would violate this requirement and make the application less flexible for users with self-hosted Taiga instances.
 
 ## Architectural Drivers
 
