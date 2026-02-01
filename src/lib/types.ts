@@ -93,6 +93,23 @@ export interface FilterObject {
 	assignee_exclude?: boolean;
 }
 
+export interface SavedView {
+	id: string;
+	name: string;
+	filter_data: string;
+	is_system: boolean;
+	is_default: boolean;
+	last_used: string | null;
+	created_at: string;
+}
+
+export interface SavedViewInput {
+	name: string;
+	filter_data: string;
+	is_system: boolean;
+	is_default: boolean;
+}
+
 // ============================================================================
 // Issue Detail Types
 // ============================================================================
