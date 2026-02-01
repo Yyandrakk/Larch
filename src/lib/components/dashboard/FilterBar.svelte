@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { X, Folder, CircleDot, User } from '@lucide/svelte';
 	import { t } from 'svelte-i18n';
-	import type { Project, FilterObject, ProjectMetadata } from '$lib/types';
+	import type { Project, FilterObject, ProjectMetadata, SavedView } from '$lib/types';
 	import * as Popover from '$lib/components/ui/popover';
 
 	import FilterChip from './filters/FilterChip.svelte';
 	import AddFilterDropdown from './filters/AddFilterDropdown.svelte';
+	import SaveSplitButton from './SaveSplitButton.svelte';
 	import ProjectFilterContent from './filters/ProjectFilterDropdown.svelte';
 	import StatusFilterContent from './filters/StatusFilterDropdown.svelte';
 	import AssigneeFilterContent from './filters/AssigneeFilterDropdown.svelte';
@@ -15,14 +16,28 @@
 		metadata = {},
 		filters = {},
 		currentUserId,
+		currentView = null,
+		isDirty = false,
+		canSave = false,
+		isSystemView = false,
 		onApply,
+		onSave,
+		onSaveAsNew,
+		onDelete,
 		userInteractedWithProjectFilter = $bindable(false)
 	}: {
 		projects: Project[];
 		metadata: Record<number, ProjectMetadata>;
 		filters: FilterObject;
 		currentUserId?: number;
+		currentView?: SavedView | null;
+		isDirty?: boolean;
+		canSave?: boolean;
+		isSystemView?: boolean;
 		onApply: (filters: FilterObject) => void;
+		onSave?: () => void;
+		onSaveAsNew?: () => void;
+		onDelete?: () => void;
 		userInteractedWithProjectFilter?: boolean;
 	} = $props();
 
@@ -291,15 +306,26 @@
 		onSelectAssignee={handleSelectAssignee}
 	/>
 
-	{#if activeFilterCount > 0}
-		<div class="ml-auto flex items-center gap-2 border-l border-[#2d3540] pl-2">
-			<button
-				class="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-500 transition-colors hover:bg-[#2d3540] hover:text-red-400"
-				onclick={clearAllFilters}
-			>
-				{$t('filters.clearAll')}
-				<X class="h-3.5 w-3.5" />
-			</button>
-		</div>
-	{/if}
+	<div class="ml-auto flex items-center gap-2">
+		{#if activeFilterCount > 0}
+			<div class="flex items-center gap-2 border-r border-[#2d3540] pr-2">
+				<button
+					class="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-500 transition-colors hover:bg-[#2d3540] hover:text-red-400"
+					onclick={clearAllFilters}
+				>
+					{$t('filters.clearAll')}
+					<X class="h-3.5 w-3.5" />
+				</button>
+			</div>
+		{/if}
+
+		<SaveSplitButton
+			{isDirty}
+			{canSave}
+			{isSystemView}
+			onSave={onSave ?? (() => {})}
+			onSaveAsNew={onSaveAsNew ?? (() => {})}
+			onDelete={onDelete ?? (() => {})}
+		/>
+	</div>
 </div>
