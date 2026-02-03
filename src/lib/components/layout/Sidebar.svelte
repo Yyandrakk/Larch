@@ -12,7 +12,7 @@
 	} = $props();
 </script>
 
-<aside class="border-border bg-background flex w-64 flex-shrink-0 flex-col border-r">
+<aside class="border-[#243347] bg-[#111822] flex w-64 flex-shrink-0 flex-col border-r">
 	<div class="flex flex-col gap-4 p-4">
 		<div class="mb-4 flex items-center gap-3">
 			<div
