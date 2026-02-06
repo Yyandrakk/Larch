@@ -28,6 +28,19 @@
 
 	let selectedIssueId = $state<number | null>(null);
 	let sheetOpen = $state(false);
+	let searchInput = $state<HTMLInputElement>();
+	let isSearchFocused = $state(false);
+
+	function handleKeydown(e: KeyboardEvent) {
+		if (
+			e.key === '/' &&
+			!['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) &&
+			!sheetOpen
+		) {
+			e.preventDefault();
+			searchInput?.focus();
+		}
+	}
 
 	let filteredIssues = $derived(
 		issues.filter(
@@ -138,6 +151,8 @@
 	});
 </script>
 
+<svelte:window onkeydown={handleKeydown} />
+
 <div class="flex flex-1 flex-col overflow-hidden">
 	<div class="px-6 pt-6 pb-2">
 		<div class="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -153,11 +168,22 @@
 				<div class="relative hidden w-full max-w-sm sm:flex">
 					<Search class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#93a9c8]" />
 					<input
+						bind:this={searchInput}
+						onfocus={() => (isSearchFocused = true)}
+						onblur={() => (isSearchFocused = false)}
+						aria-label={$t('dashboard.searchPlaceholder')}
 						type="text"
 						placeholder={$t('dashboard.searchPlaceholder')}
 						bind:value={searchQuery}
 						class="w-full rounded-lg border border-transparent bg-[#1a2433] py-1.5 pr-4 pl-10 text-sm text-white placeholder-[#93a9c8] transition-all focus:border-[#243347] focus:bg-[#243347] focus:ring-0"
 					/>
+					{#if !isSearchFocused && searchQuery === ''}
+						<kbd
+							class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 inline-flex h-5 select-none items-center gap-1 rounded border border-[#243347] bg-[#1a2433] px-1.5 font-mono text-[10px] font-medium text-[#93a9c8] opacity-100"
+						>
+							<span class="text-xs">/</span>
+						</kbd>
+					{/if}
 				</div>
 			</div>
 			<div class="flex items-center gap-3">
