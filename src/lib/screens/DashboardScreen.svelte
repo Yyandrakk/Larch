@@ -67,28 +67,78 @@
 	let currentViewFilter = $derived.by(() => {
 		if (!currentView) return {};
 		try {
-			return JSON.parse(currentView.filter_data) as FilterObject;
+			const raw = JSON.parse(currentView.filter_data) as FilterObject;
+			return hydrateSystemFilters(raw, currentView.is_system);
 		} catch (e) {
 			console.error('Failed to parse view filter data', e);
 			return {};
 		}
 	});
 
+	function hydrateSystemFilters(raw: FilterObject, isSystem: boolean): FilterObject {
+		if (!isSystem) return raw;
+
+		// Logic for "Active Triage" (system view with exclude=true but no explicit IDs)
+		if (raw.status_exclude && (!raw.status_ids || raw.status_ids.length === 0)) {
+			const hydrated = { ...raw };
+
+			const targetProjectIds =
+				hydrated.project_ids && hydrated.project_ids.length > 0
+					? hydrated.project_ids
+					: selectedProjectIds;
+
+			const closedStatusIds = new Set<number>();
+			targetProjectIds.forEach((pid) => {
+				const meta = metadata[pid];
+				if (meta) {
+					meta.statuses.forEach((status) => {
+						if (status.is_closed) {
+							closedStatusIds.add(status.id);
+						}
+					});
+				}
+			});
+
+			if (closedStatusIds.size > 0) {
+				hydrated.status_ids = Array.from(closedStatusIds);
+			}
+
+			return hydrated;
+		}
+
+		return raw;
+	}
+
 	let isDirty = $derived(currentView ? !deepEqual(filters, currentViewFilter) : false);
 
 	let canSave = $derived(!!currentView && !isSystemView);
 
-	async function loadViews() {
+	async function loadViews(): Promise<SavedView[]> {
 		try {
 			views = await invoke(CMD_LIST_VIEWS);
 			if (currentView) {
 				const updated = views.find((v) => v.id === currentView!.id);
 				if (updated) currentView = updated;
 			}
+			return views;
 		} catch (error) {
 			console.error('Failed to load views:', error);
 			toast.error($t('errors.unknown'));
+			return [];
 		}
+	}
+
+	function findDefaultView(loadedViews: SavedView[]): SavedView | null {
+		// First try to find the system view (Active Triage)
+		const systemView = loadedViews.find((v) => v.is_system);
+		if (systemView) return systemView;
+
+		// Fallback to any view marked as default
+		const defaultView = loadedViews.find((v) => v.is_default);
+		if (defaultView) return defaultView;
+
+		// Last resort: return first view or null
+		return loadedViews.length > 0 ? loadedViews[0] : null;
 	}
 
 	async function sanitizeViews(projectIds?: number[], statusIds?: number[]) {
@@ -103,7 +153,7 @@
 		}
 	}
 
-	function handleViewSelect(view: SavedView | null) {
+	async function handleViewSelect(view: SavedView | null) {
 		if (!view) {
 			currentView = null;
 			return;
@@ -111,9 +161,35 @@
 
 		currentView = view;
 		try {
-			const newFilters = JSON.parse(view.filter_data);
-			filters = newFilters;
-			refreshIssues();
+			const rawFilters = JSON.parse(view.filter_data) as FilterObject;
+
+			// 1. Determine which projects we need metadata for
+			let projectsToLoad: number[] = [];
+
+			if (rawFilters.project_ids && rawFilters.project_ids.length > 0) {
+				projectsToLoad = rawFilters.project_ids;
+			} else if (view.is_system && rawFilters.status_exclude) {
+				// For Active Triage, we need metadata for currently selected projects
+				// to calculate closed statuses
+				projectsToLoad = selectedProjectIds;
+			}
+
+			// 2. Load missing metadata
+			if (projectsToLoad.length > 0) {
+				const missingProjects = projectsToLoad.filter((id) => !metadata[id]);
+				if (missingProjects.length > 0) {
+					const newMetadata = await invoke<Record<number, ProjectMetadata>>(
+						CMD_GET_PROJECT_METADATA,
+						{ projectIds: projectsToLoad }
+					);
+					metadata = { ...metadata, ...newMetadata };
+				}
+			}
+
+			// 3. Hydrate filters with metadata (calculate status IDs for system views)
+			filters = hydrateSystemFilters(rawFilters, view.is_system);
+
+			await refreshIssues();
 
 			invoke(CMD_SWITCH_VIEW, { id: view.id }).catch(console.error);
 		} catch (e) {
@@ -171,11 +247,19 @@
 			await invoke(CMD_DELETE_VIEW, { id: viewToDelete.id });
 			toast.success($t('views.deleted'));
 
+			// If we deleted the currently selected view, switch to system view (Active Triage)
 			if (currentView?.id === viewToDelete.id) {
-				currentView = null;
+				await loadViews();
+				const systemView = views.find((v) => v.is_system);
+				if (systemView) {
+					handleViewSelect(systemView);
+				} else {
+					currentView = null;
+				}
+			} else {
+				await loadViews();
 			}
 
-			await loadViews();
 			deleteDialogOpen = false;
 			viewToDelete = null;
 		} catch (error) {
@@ -205,31 +289,13 @@
 			const allProjectIds = projects.map((p) => p.id);
 			await sanitizeViews(allProjectIds, undefined);
 
-			if (!filters.project_ids && selectedIds.length > 0) {
-				filters.project_ids = selectedIds;
-			}
-
+			// Load metadata for selected projects if any
 			if (selectedIds.length > 0) {
 				metadata = await invoke(CMD_GET_PROJECT_METADATA, { projectIds: selectedIds });
-
-				if (!filters.status_ids) {
-					const closedStatusIds = new Set<number>();
-					Object.values(metadata).forEach((meta) => {
-						meta.statuses.forEach((status) => {
-							if (status.is_closed) {
-								closedStatusIds.add(status.id);
-							}
-						});
-					});
-
-					if (closedStatusIds.size > 0) {
-						filters.status_ids = Array.from(closedStatusIds);
-						filters.status_exclude = true;
-					}
-				}
 			}
 
-			await refreshIssues();
+			// Note: We don't call refreshIssues() here anymore.
+			// Issues will be loaded after the default view is selected.
 		} catch (error) {
 			console.error('Failed to load data:', error);
 			toast.error($t('errors.unknown'));
@@ -309,8 +375,16 @@
 		};
 	});
 
-	onMount(() => {
-		loadData();
+	onMount(async () => {
+		// Load views and projects first
+		const loadedViews = await loadViews();
+		await loadData();
+
+		// Then select the default view (which will trigger issue loading)
+		const defaultView = findDefaultView(loadedViews);
+		if (defaultView) {
+			await handleViewSelect(defaultView);
+		}
 	});
 </script>
 
@@ -403,19 +477,20 @@
 <SaveViewDialog bind:open={saveDialogOpen} onSave={handleCreateView} />
 
 <AlertDialog.Root bind:open={deleteDialogOpen}>
-	<AlertDialog.Content>
+	<AlertDialog.Content class="border-[#243347] bg-[#161e2a]">
 		<AlertDialog.Header>
 			<AlertDialog.Title>{$t('views.deleteTitle')}</AlertDialog.Title>
 			<AlertDialog.Description>
-				{$t('views.deleteDescription', { values: { name: viewToDelete?.name } })}
+				{#if viewToDelete}
+					{$t('views.deleteDescription', { values: { name: viewToDelete.name } })}
+				{/if}
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
-			<AlertDialog.Cancel>{$t('common.cancel')}</AlertDialog.Cancel>
-			<AlertDialog.Action
-				class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-				onclick={confirmDelete}
-			>
+			<AlertDialog.Cancel class="border-[#243347] bg-[#1a2433] hover:bg-[#243347] hover:text-white">
+				{$t('common.cancel')}
+			</AlertDialog.Cancel>
+			<AlertDialog.Action class="bg-red-600 text-white hover:bg-red-700" onclick={confirmDelete}>
 				{$t('common.delete')}
 			</AlertDialog.Action>
 		</AlertDialog.Footer>

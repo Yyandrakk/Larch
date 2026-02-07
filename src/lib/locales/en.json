@@ -67,6 +67,7 @@
 		"retry": "Retry",
 		"close": "Close",
 		"cancel": "Cancel",
+		"delete": "Delete",
 		"saving": "Saving...",
 		"add": "Add",
 		"uploading": "Uploading image..."
@@ -242,6 +243,11 @@
 		"saveAs": "Save as New View",
 		"delete": "Delete View",
 		"namePlaceholder": "View name...",
-		"deleteConfirm": "Are you sure you want to delete this view?"
+		"deleteConfirm": "Are you sure you want to delete this view?",
+		"saved": "View saved successfully",
+		"created": "View created successfully",
+		"deleted": "View deleted successfully",
+		"deleteTitle": "Delete View",
+		"deleteDescription": "Are you sure you want to delete \"{name}\"? This action cannot be undone."
 	}
 }

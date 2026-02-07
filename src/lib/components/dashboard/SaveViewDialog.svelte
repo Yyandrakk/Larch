@@ -36,7 +36,7 @@
 </script>
 
 <Dialog.Root bind:open>
-	<Dialog.Content class="sm:max-w-[425px]">
+	<Dialog.Content class="border-[#243347] bg-[#161e2a] sm:max-w-[425px]">
 		<Dialog.Header>
 			<Dialog.Title>{$t('views.saveAs')}</Dialog.Title>
 		</Dialog.Header>

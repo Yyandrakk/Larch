@@ -155,3 +155,13 @@
 - **UI Integration**: `ViewSwitcher` and `SaveSplitButton` successfully integrated into `DashboardScreen`. State management handles dirty checking and saving logic.
 - **SaveViewDialog**: Does not support `defaultName` prop, so the UI logic was simplified to clear name on open.
 - **ViewSwitcher**: Updated to use `number` ID type to match `SavedView` entity.
+
+### Keyboard Shortcuts (Task 15)
+- Implemented global keyboard shortcuts for saving views using Svelte 5 `$effect`.
+- Use `document.activeElement` to ensure shortcuts don't interfere with inputs, textareas, or dialogs.
+- Logic handled:
+    - `Cmd+S` / `Ctrl+S`: Saves current view if dirty and not a system view. Opens "Save As" if it's a system view.
+    - `Cmd+Shift+S`: Always opens "Save As" dialog.
+- Use Svelte transitions (like `fade`) alongside Tailwind animations (like `animate-pulse`) for polished UI feedback.
+- When implementing "dirty" indicators, a simple pulsing dot with a tooltip provides clear, non-intrusive feedback to the user.
+- Always verify translation keys are correctly nested in the locale files to avoid broken UI strings.
