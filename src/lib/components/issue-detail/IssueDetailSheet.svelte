@@ -20,7 +20,8 @@
 		CMD_UPLOAD_ISSUE_ATTACHMENT,
 		CMD_DELETE_ISSUE_ATTACHMENT,
 		CMD_GET_ISSUE_ATTACHMENTS,
-		CMD_GET_TAIGA_BASE_URL
+		CMD_GET_TAIGA_BASE_URL,
+		CMD_CHANGE_ISSUE_SUBJECT
 	} from '$lib/commands.svelte';
 	import type {
 		IssueDetail,
@@ -41,7 +42,17 @@
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { t } from 'svelte-i18n';
 	import { toast } from 'svelte-sonner';
-	import { MessageSquare, Edit3, X, Save, Loader2, ChevronRight, Share2 } from '@lucide/svelte';
+	import {
+		MessageSquare,
+		Edit3,
+		X,
+		Save,
+		Loader2,
+		ChevronRight,
+		Share2,
+		Check
+	} from '@lucide/svelte';
+	import { Input } from '$lib/components/ui/input';
 	import CommentList from './CommentList.svelte';
 	import StatusChip from './StatusChip.svelte';
 	import IssueMetadataSidebar from './IssueMetadataSidebar.svelte';
@@ -83,6 +94,10 @@
 	let hasConflict = $state(false);
 	let taigaBaseUrl = $state('');
 
+	let isEditingTitle = $state(false);
+	let titleDraft = $state('');
+	let titleSaving = $state(false);
+
 	let isEditingDescription = $state(false);
 	let descriptionDraft = $state('');
 	let descriptionSaving = $state(false);
@@ -115,10 +130,67 @@
 		}
 	});
 
+	function startEditingTitle() {
+		if (!issue) {
+			return;
+		}
+		isEditingTitle = true;
+		titleDraft = issue.subject;
+	}
+
+	function cancelEditingTitle() {
+		isEditingTitle = false;
+		titleDraft = '';
+	}
+
+	async function saveTitle() {
+		if (!issue || !titleDraft.trim()) {
+			return;
+		}
+
+		titleSaving = true;
+		hasConflict = false;
+
+		try {
+			const updatedIssue = await invoke<IssueDetail>(CMD_CHANGE_ISSUE_SUBJECT, {
+				issueId: issue.id,
+				subject: titleDraft,
+				version: issue.version
+			});
+
+			issue = updatedIssue;
+			isEditingTitle = false;
+			toast.success($t('issueDetail.titleUpdated') || 'Title updated');
+			await reloadHistory();
+			onIssueUpdated?.();
+		} catch (e) {
+			console.error('Failed to update title:', e);
+			if (isVersionConflict(e)) {
+				handleVersionConflict();
+			} else {
+				toast.error($t('issueDetail.titleUpdateError') || 'Failed to update title');
+			}
+		} finally {
+			titleSaving = false;
+		}
+	}
+
+	function handleTitleKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			saveTitle();
+		} else if (e.key === 'Escape') {
+			e.preventDefault();
+			cancelEditingTitle();
+		}
+	}
+
 	$effect(() => {
 		if (issueId) {
 			commentText = '';
 			isEditingDescription = false;
+			titleDraft = '';
+			isEditingTitle = false;
 			descriptionDraft = '';
 			hasDraft = false;
 			checkForDraft(issueId);
@@ -949,9 +1021,60 @@
 						</Button>
 					</div>
 				</div>
-				<Sheet.Title class="text-xl leading-tight font-semibold">
-					{issue.subject}
-				</Sheet.Title>
+				{#if isEditingTitle}
+					<div class="flex items-center gap-2">
+						<Input
+							bind:value={titleDraft}
+							class="h-9 text-xl font-semibold"
+							onkeydown={handleTitleKeydown}
+							disabled={titleSaving}
+							data-testid="issue-title-input"
+							autofocus
+						/>
+						<Button
+							variant="ghost"
+							size="icon"
+							class="text-destructive h-9 w-9"
+							onclick={cancelEditingTitle}
+							disabled={titleSaving}
+							title={$t('common.cancel') || 'Cancel'}
+							data-testid="cancel-title-btn"
+						>
+							<X class="h-4 w-4" />
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon"
+							class="h-9 w-9 text-green-500 hover:text-green-600"
+							onclick={saveTitle}
+							disabled={titleSaving}
+							title={$t('common.save') || 'Save'}
+							data-testid="save-title-btn"
+						>
+							{#if titleSaving}
+								<Loader2 class="h-4 w-4 animate-spin" />
+							{:else}
+								<Check class="h-4 w-4" />
+							{/if}
+						</Button>
+					</div>
+				{:else}
+					<div class="group flex items-start justify-between gap-4">
+						<Sheet.Title class="text-xl leading-tight font-semibold" data-testid="issue-title">
+							{issue.subject}
+						</Sheet.Title>
+						<Button
+							variant="ghost"
+							size="icon"
+							class="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+							onclick={startEditingTitle}
+							title={$t('issueDetail.editTitle') || 'Edit title'}
+							data-testid="edit-title-btn"
+						>
+							<Edit3 class="h-3 w-3" />
+						</Button>
+					</div>
+				{/if}
 			</Sheet.Header>
 
 			<div class="flex min-h-0 flex-1">
