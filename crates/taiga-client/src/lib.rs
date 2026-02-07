@@ -767,4 +767,99 @@ impl TaigaClient {
             Err(TaigaClientError::AuthFailed(status))
         }
     }
+
+    /// Edit an issue comment
+    /// PATCH /api/v1/history/issue/{issue_id}/{comment_id}
+    pub async fn edit_issue_comment(
+        &self,
+        token: &Secret<String>,
+        issue_id: i64,
+        comment_id: String,
+        new_comment: &str,
+    ) -> Result<(), TaigaClientError> {
+        let url = self.build_url(&format!("history/issue/{}/{}", issue_id, comment_id))?;
+        log::info!(
+            "Editing comment {} on issue {} at {}",
+            comment_id,
+            issue_id,
+            url
+        );
+
+        let body = serde_json::json!({ "comment": new_comment });
+
+        let response = self
+            .client
+            .patch(url)
+            .bearer_auth(token.expose_secret())
+            .json(&body)
+            .send()
+            .await?;
+
+        log::info!("Edit comment response status: {}", response.status());
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            log::error!("Edit comment failed. Status: {}, Body: {}", status, body);
+            let err = match status {
+                StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                    TaigaClientError::Unauthorized(status)
+                }
+                _ => TaigaClientError::AuthFailed(status),
+            };
+            Err(err)
+        }
+    }
+
+    /// Delete an issue comment
+    /// POST /api/v1/history/issue/{issue_id}/{comment_id}/delete_comment
+    pub async fn delete_issue_comment(
+        &self,
+        token: &Secret<String>,
+        issue_id: i64,
+        comment_id: String,
+    ) -> Result<(), TaigaClientError> {
+        let url = self.build_url(&format!(
+            "history/issue/{}/{}/delete_comment",
+            issue_id, comment_id
+        ))?;
+        log::info!(
+            "Deleting comment {} on issue {} at {}",
+            comment_id,
+            issue_id,
+            url
+        );
+
+        let response = self
+            .client
+            .post(url)
+            .bearer_auth(token.expose_secret())
+            .send()
+            .await?;
+
+        log::info!("Delete comment response status: {}", response.status());
+
+        if response.status().is_success() || response.status() == StatusCode::NO_CONTENT {
+            Ok(())
+        } else {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            log::error!(
+                "Delete comment failed. Status: {}, Body: {}",
+                status,
+                body
+            );
+            let err = match status {
+                StatusCode::NOT_FOUND => TaigaClientError::EndpointNotFound(status),
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                    TaigaClientError::Unauthorized(status)
+                }
+                _ => TaigaClientError::AuthFailed(status),
+            };
+            Err(err)
+        }
+    }
 }
