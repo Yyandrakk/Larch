@@ -67,6 +67,7 @@
 		"retry": "Retry",
 		"close": "Close",
 		"cancel": "Cancel",
+		"delete": "Delete",
 		"saving": "Saving...",
 		"add": "Add",
 		"uploading": "Uploading image..."
@@ -233,5 +234,20 @@
 		"shareCopied": "Issue URL copied to clipboard",
 		"shareError": "Failed to copy URL",
 		"blocked": "Blocked"
+	},
+	"views": {
+		"title": "Saved Views",
+		"selectView": "Select View",
+		"unsavedChanges": "Unsaved changes",
+		"save": "Save View",
+		"saveAs": "Save as New View",
+		"delete": "Delete View",
+		"namePlaceholder": "View name...",
+		"deleteConfirm": "Are you sure you want to delete this view?",
+		"saved": "View saved successfully",
+		"created": "View created successfully",
+		"deleted": "View deleted successfully",
+		"deleteTitle": "Delete View",
+		"deleteDescription": "Are you sure you want to delete \"{name}\"? This action cannot be undone."
 	}
 }

@@ -133,7 +133,15 @@ pub fn run() {
             commands::issue_commands::upload_issue_attachment,
             commands::issue_commands::delete_issue_attachment,
             commands::issue_commands::get_issue_attachments,
-            commands::app_commands::force_close_app
+            commands::app_commands::force_close_app,
+            commands::view_commands::list_views,
+            commands::view_commands::get_view,
+            commands::view_commands::create_view,
+            commands::view_commands::update_view,
+            commands::view_commands::delete_view,
+            commands::view_commands::switch_view,
+            commands::view_commands::set_default_view,
+            commands::view_commands::sanitize_views
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

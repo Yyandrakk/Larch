@@ -314,11 +314,13 @@ If your implementation contradicts a document, raise the conflict before proceed
 | Frontend      | Svelte                 | 5.x     |
 | UI Components | shadcn-svelte, bits-ui | latest  |
 | Styling       | TailwindCSS            | 4.x     |
-| Icons         | @lucide/svelte         | latest  |
-| i18n          | svelte-i18n            | 4.x     |
-| ORM           | SeaORM                 | 1.x     |
-| HTTP Client   | reqwest                | 0.12    |
-| Secrets       | keyring-rs             | 2.x     |
+
+**shadcn-svelte Documentation**: For component API reference and examples, use Context7 with library ID `/llmstxt/shadcn-svelte_llms_txt` or visit https://shadcn-svelte.com/llms.txt
+| Icons | @lucide/svelte | latest |
+| i18n | svelte-i18n | 4.x |
+| ORM | SeaORM | 1.x |
+| HTTP Client | reqwest | 0.12 |
+| Secrets | keyring-rs | 2.x |
 
 **MCP Context7**: Use for Tauri v2 / Svelte 5 API lookups - training data may be outdated.
 
