@@ -1066,7 +1066,7 @@
 						<Button
 							variant="ghost"
 							size="icon"
-							class="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+							class="text-muted-foreground hover:text-foreground h-6 w-6"
 							onclick={startEditingTitle}
 							title={$t('issueDetail.editTitle') || 'Edit title'}
 							data-testid="edit-title-btn"
@@ -1176,6 +1176,7 @@
 							</h3>
 							<CommentList
 								{comments}
+								issueId={issue.id}
 								bind:commentText
 								submitting={commentSubmitting}
 								onSubmit={handleAddComment}

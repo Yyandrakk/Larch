@@ -16,12 +16,14 @@
 
 	let {
 		comments = $bindable(),
+		issueId,
 		commentText = $bindable(''),
 		submitting = false,
 		onSubmit,
 		onUpload
 	}: {
 		comments: HistoryEntry[];
+		issueId: number;
 		commentText?: string;
 		submitting?: boolean;
 		onSubmit?: (text: string) => void;
@@ -109,6 +111,7 @@
 		isSubmittingEdit = true;
 		try {
 			await invoke(CMD_EDIT_ISSUE_COMMENT, {
+				issueId,
 				commentId: editingId,
 				comment: editingText
 			});
@@ -151,7 +154,7 @@
 
 		isDeleting = true;
 		try {
-			await invoke(CMD_DELETE_ISSUE_COMMENT, { commentId: deletingId });
+			await invoke(CMD_DELETE_ISSUE_COMMENT, { issueId, commentId: deletingId });
 
 			// Optimistic remove
 			comments = comments.filter((c) => c.id !== deletingId);
@@ -224,9 +227,7 @@
 						</div>
 
 						{#if comment.user_id === currentUser?.id && editingId !== comment.id}
-							<div
-								class="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100"
-							>
+							<div class="flex items-center gap-1">
 								<Button
 									variant="ghost"
 									size="icon"
@@ -251,35 +252,15 @@
 
 					{#if editingId === comment.id}
 						<div class="mt-2 space-y-2">
-							<textarea
+							<MarkdownEditor
 								bind:value={editingText}
-								class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[100px] w-full resize-none rounded-lg border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-								rows={4}
-							></textarea>
-							<div class="flex justify-end gap-2">
-								<Button
-									variant="ghost"
-									size="sm"
-									class="h-8 w-8 p-0"
-									onclick={cancelEdit}
-									disabled={isSubmittingEdit}
-								>
-									<X class="h-4 w-4" />
-								</Button>
-								<Button
-									variant="default"
-									size="sm"
-									class="h-8 w-8 p-0"
-									onclick={saveEdit}
-									disabled={isSubmittingEdit || !editingText.trim()}
-								>
-									{#if isSubmittingEdit}
-										<Loader2 class="h-4 w-4 animate-spin" />
-									{:else}
-										<Check class="h-4 w-4" />
-									{/if}
-								</Button>
-							</div>
+								submitLabel={$t('common.save') || 'Save'}
+								submitIcon={Check}
+								submitting={isSubmittingEdit}
+								onSubmit={saveEdit}
+								onCancel={cancelEdit}
+								{onUpload}
+							/>
 						</div>
 					{:else}
 						<div class="group mt-1 text-sm">

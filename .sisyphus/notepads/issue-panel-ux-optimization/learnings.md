@@ -77,3 +77,17 @@
 - **Gotcha**: `CMD_EDIT_ISSUE_COMMENT` and `CMD_DELETE_ISSUE_COMMENT` were present in `commands.svelte.ts` but LSP sometimes reported them as missing. Verified existence manually.
 - **Dependency**: Needed `@lucide/svelte` for icons.
 - **Verification**: Verified via `pnpm check`. E2E tests are missing in the repo, so visual/manual verification would be next step if environment allowed.
+### Task 7: i18n and Verification
+- Added missing i18n keys to `en.json` for title editing and comment management.
+- Keys added: `editTitle`, `titleUpdated`, `titleUpdateError`, `commentUpdated`, `commentDeleted`, `deleteCommentTitle`, `deleteCommentDescription`.
+- Verified that `just check` passes.
+- Completed full E2E verification (Title edit, Comment edit, Comment delete).
+- Project is now fully internationalized for the new features.
+
+## Task 8: Fix issueId in comments and upgrade editor
+
+- **Fix**: `edit_issue_comment` and `delete_issue_comment` commands require `issueId` to construct the correct URL path in the backend.
+- **Refactor**: Upgraded `CommentList` to use `MarkdownEditor` for editing comments, providing a consistent experience with the main comment input.
+- **Component Update**: Enhanced `MarkdownEditor` to support `submitLabel`, `submitIcon`, and `onCancel` props, making it more reusable for inline editing scenarios.
+- **Svelte 5**: Used `{@const}` tag to render dynamic component props (`submitIcon`) inside the template.
+- **Type Safety**: Encountered some friction with `ComponentType` vs `Component` in Svelte 5 + lucide-svelte, opted for `any` for `submitIcon` to ensure compatibility.

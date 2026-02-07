@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { tick, type Component } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { t } from 'svelte-i18n';
 	import { transformImageUrls } from '$lib/utils/image-auth';
@@ -11,14 +11,20 @@
 		placeholder = '',
 		disabled = false,
 		submitting = false,
+		submitLabel = undefined,
+		submitIcon = undefined,
 		onSubmit,
+		onCancel,
 		onUpload
 	}: {
 		value?: string;
 		placeholder?: string;
 		disabled?: boolean;
 		submitting?: boolean;
+		submitLabel?: string;
+		submitIcon?: Component | any;
 		onSubmit?: (text: string) => void;
+		onCancel?: () => void;
 		onUpload?: (file: File) => Promise<string | undefined>;
 	} = $props();
 
@@ -423,13 +429,23 @@
 				{$t('issueDetail.shiftEnterToSubmit') || 'Shift+Enter to submit'}
 			{/if}
 		</span>
-		<Button size="sm" onclick={handleSubmit} disabled={!canSubmit}>
-			{#if submitting}
-				<Loader2 class="mr-2 h-4 w-4 animate-spin" />
-			{:else}
-				<Send class="mr-2 h-4 w-4" />
+		<div class="flex items-center gap-2">
+			{#if onCancel}
+				<Button variant="ghost" size="sm" onclick={onCancel} disabled={submitting || uploading}>
+					{$t('common.cancel') || 'Cancel'}
+				</Button>
 			{/if}
-			{$t('issueDetail.addComment') || 'Add comment'}
-		</Button>
+			<Button size="sm" onclick={handleSubmit} disabled={!canSubmit}>
+				{#if submitting}
+					<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+				{:else if submitIcon}
+					{@const Icon = submitIcon}
+					<Icon class="mr-2 h-4 w-4" />
+				{:else}
+					<Send class="mr-2 h-4 w-4" />
+				{/if}
+				{submitLabel || $t('issueDetail.addComment') || 'Add comment'}
+			</Button>
+		</div>
 	</div>
 </div>
