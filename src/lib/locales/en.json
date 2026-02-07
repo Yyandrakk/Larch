@@ -237,8 +237,8 @@
 	},
 	"views": {
 		"title": "Saved Views",
-		"select_view": "Select View",
-		"unsaved_changes": "Unsaved changes",
+		"selectView": "Select View",
+		"unsavedChanges": "Unsaved changes",
 		"save": "Save View",
 		"saveAs": "Save as New View",
 		"delete": "Delete View",

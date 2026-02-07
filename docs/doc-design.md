@@ -22,13 +22,13 @@ The vision for Larch is to create a centralized, multi-project issue management 
 
 ### 1.3. Key Terminology / Glossary
 
-* **Taiga Instance:** A specific deployment of Taiga (official cloud or self-hosted).
-* **Active Triage:** The default, system-level view that filters out closed issues to reduce cognitive load.
-* **Saved View (Preset):** A persistent configuration of filters (projects, statuses, assignees) with a user-defined name.
-* **Dirty State:** A visual indicator signaling that the current active filters have been modified and differ from the version persisted in the database.
-* **View Switcher:** A header-level component used to navigate between different saved views.
-* **Google Stitch:** An AI design tool used to generate HTML/CSS layouts as a development reference.
-* **is_closed:** A boolean flag on Issue Status indicating if this status represents a closed/resolved state.
+- **Taiga Instance:** A specific deployment of Taiga (official cloud or self-hosted).
+- **Active Triage:** The default, system-level view that filters out closed issues to reduce cognitive load.
+- **Saved View (Preset):** A persistent configuration of filters (projects, statuses, assignees) with a user-defined name.
+- **Dirty State:** A visual indicator signaling that the current active filters have been modified and differ from the version persisted in the database.
+- **View Switcher:** A header-level component used to navigate between different saved views.
+- **Google Stitch:** An AI design tool used to generate HTML/CSS layouts as a development reference.
+- **is_closed:** A boolean flag on Issue Status indicating if this status represents a closed/resolved state.
 
 ---
 
@@ -36,19 +36,19 @@ The vision for Larch is to create a centralized, multi-project issue management 
 
 ### 2.1. Goals (v2.1)
 
-* [ ] **View Persistence:** Implement local storage for custom filters in SQLite using SeaORM.
-* [ ] **Dropdown View Switcher:** Replace the static title with an interactive selector to switch and delete views.
-* [ ] **Contextual Save Management:** Implement a "Split Button" in the filter bar to save changes or create new views without leaving the triage flow.
-* [ ] **Integrity Validation:** Backend logic to detect and sanitize orphan project or status IDs within saved views.
-* [ ] **Dirty State Indicator:** A subtle visual notification (asterisk or dot) to alert users of unsaved changes in the current view.
-* [ ] **Functional Continuity:** Maintain all v2.0 features, including sidebar navigation, overlay details, link copying, and clipboard screenshot support.
+- [ ] **View Persistence:** Implement local storage for custom filters in SQLite using SeaORM.
+- [ ] **Dropdown View Switcher:** Replace the static title with an interactive selector to switch and delete views.
+- [ ] **Contextual Save Management:** Implement a "Split Button" in the filter bar to save changes or create new views without leaving the triage flow.
+- [ ] **Integrity Validation:** Backend logic to detect and sanitize orphan project or status IDs within saved views.
+- [ ] **Dirty State Indicator:** A subtle visual notification (asterisk or dot) to alert users of unsaved changes in the current view.
+- [ ] **Functional Continuity:** Maintain all v2.0 features, including sidebar navigation, overlay details, link copying, and clipboard screenshot support.
 
 ### 2.2. Non-Goals
 
-* **NO Cloud Synchronization:** Larch remains a local-first application; no external backend for view synchronization will be implemented.
-* **NO Bulk Editing:** Managing multiple issues simultaneously remains out of scope.
-* **NO View Sharing:** Saved views are strictly local to the user's device.
-* **NO Real-time Auto-refresh:** Manual refresh with Toast feedback remains the standard.
+- **NO Cloud Synchronization:** Larch remains a local-first application; no external backend for view synchronization will be implemented.
+- **NO Bulk Editing:** Managing multiple issues simultaneously remains out of scope.
+- **NO View Sharing:** Saved views are strictly local to the user's device.
+- **NO Real-time Auto-refresh:** Manual refresh with Toast feedback remains the standard.
 
 ---
 
@@ -56,7 +56,7 @@ The vision for Larch is to create a centralized, multi-project issue management 
 
 ### 3.1. User Persona
 
-* **"Alex, the Multi-Project Manager"**: Oversees 10+ projects. Alex needs to switch between different "battlefronts" (e.g., "Urgent", "Backend", "Frontend") multiple times a day and expects the application to remember exactly how they prefer to view each data segment.
+- **"Alex, the Multi-Project Manager"**: Oversees 10+ projects. Alex needs to switch between different "battlefronts" (e.g., "Urgent", "Backend", "Frontend") multiple times a day and expects the application to remember exactly how they prefer to view each data segment.
 
 ### 3.2. User Journey / Flow (v2.1)
 
@@ -69,11 +69,11 @@ The vision for Larch is to create a centralized, multi-project issue management 
 
 ### 3.3. UX Acceptance Criteria
 
-* **View Switcher:** Must appear as a clean dropdown menu; system-level views (Active Triage) must be locked and non-deletable.
-* **Split Button:** Only visible in the filter bar when changes are pending or a customizable view is active.
-* **Naming Modal:** Minimalist dialog that validates the name input is not empty.
-* **Dirty State:** Resets immediately upon saving or when switching to a different view.
-* **Ordering:** Views are ordered by `last_used` timestamp in the switcher for quick access.
+- **View Switcher:** Must appear as a clean dropdown menu; system-level views (Active Triage) must be locked and non-deletable.
+- **Split Button:** Only visible in the filter bar when changes are pending or a customizable view is active.
+- **Naming Modal:** Minimalist dialog that validates the name input is not empty.
+- **Dirty State:** Resets immediately upon saving or when switching to a different view.
+- **Ordering:** Views are ordered by `last_used` timestamp in the switcher for quick access.
 
 ---
 
@@ -91,23 +91,23 @@ The vision for Larch is to create a centralized, multi-project issue management 
 
 ### 4.2. Technology Stack
 
-* **Framework:** Tauri v2.
-* **Backend:** Rust.
-* **Frontend:** Svelte 5 + TypeScript.
-* **Design Reference:** Google Stitch (AI-generated HTML/CSS).
-* **Styling:** Tailwind CSS.
-* **Database:** SQLite via **SeaORM**.
-* **Security:** `keyring-rs` for token management.
+- **Framework:** Tauri v2.
+- **Backend:** Rust.
+- **Frontend:** Svelte 5 + TypeScript.
+- **Design Reference:** Google Stitch (AI-generated HTML/CSS).
+- **Styling:** Tailwind CSS.
+- **Database:** SQLite via **SeaORM**.
+- **Security:** `keyring-rs` for token management.
 
 ### 4.3. Data Schema (SeaORM Entities)
 
 The `SavedView` entity is added to the SQLite database:
 
-* `id`: UUID (Primary Key).
-* `name`: String (User-defined name).
-* `filter_data`: Json (Object containing `project_ids`, `status_ids`, `assignees`, and inclusion/exclusion logic).
-* `is_default`: Boolean (Indicates the startup view).
-* `last_used`: DateTime (Timestamp for ordering).
+- `id`: UUID (Primary Key).
+- `name`: String (User-defined name).
+- `filter_data`: Json (Object containing `project_ids`, `status_ids`, `assignees`, and inclusion/exclusion logic).
+- `is_default`: Boolean (Indicates the startup view).
+- `last_used`: DateTime (Timestamp for ordering).
 
 ### 4.4. Backend Logic & Validation
 
@@ -128,14 +128,14 @@ The `SavedView` entity is added to the SQLite database:
 
 ### 5.2. Testing Strategy
 
-* **Rust Unit Tests:** Serialization of filter JSON and ID validation logic.
-* **Component Testing (Svelte):** Verify Dirty State reactivity to filter changes.
-* **Manual E2E:** Test "Save as new" duplicates, deletion of views, and persistence after application restarts.
+- **Rust Unit Tests:** Serialization of filter JSON and ID validation logic.
+- **Component Testing (Svelte):** Verify Dirty State reactivity to filter changes.
+- **Manual E2E:** Test "Save as new" duplicates, deletion of views, and persistence after application restarts.
 
 ---
 
 ## 6. Risks & Open Questions
 
-* **Risk 1 (High):** Complexity of translating Stitch-generated HTML/CSS into reactive Svelte 5 components while maintaining consistency.
-* **Risk 2 (Medium):** Data inconsistency if Taiga modifies project or status IDs. *Mitigation:* Implement backend sanitization as described in section 4.4.
-* **Risk 3 (Medium):** UI real estate for the Split Button on small window sizes. *Mitigation:* Design the button to collapse text and show only icons if space is restricted.
+- **Risk 1 (High):** Complexity of translating Stitch-generated HTML/CSS into reactive Svelte 5 components while maintaining consistency.
+- **Risk 2 (Medium):** Data inconsistency if Taiga modifies project or status IDs. _Mitigation:_ Implement backend sanitization as described in section 4.4.
+- **Risk 3 (Medium):** UI real estate for the Split Button on small window sizes. _Mitigation:_ Design the button to collapse text and show only icons if space is restricted.

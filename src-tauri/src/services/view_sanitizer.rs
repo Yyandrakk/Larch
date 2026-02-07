@@ -68,8 +68,7 @@ pub async fn sanitize_all_views<R: Repository>(
         }
 
         if changed {
-            let new_filter_json = serde_json::to_string(&new_filter)
-                .expect("Failed to serialize FilterData");
+            let new_filter_json = serde_json::to_string(&new_filter)?;
             
             repo.update_view(view.id, &view.name, &new_filter_json).await?;
             log::info!("Sanitized view {}: removed orphan IDs", view.name);

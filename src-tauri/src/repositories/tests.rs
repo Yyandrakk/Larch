@@ -115,6 +115,23 @@ async fn test_list_views() {
 }
 
 #[tokio::test]
+async fn test_delete_view_happy_path() {
+    let conn = create_test_db().await;
+    let repo = SqliteRepository::new(conn);
+
+    let view = repo
+        .create_view("My View", "{}", false, false)
+        .await
+        .unwrap();
+
+    let result = repo.delete_view(view.id).await;
+    assert!(result.is_ok());
+
+    let deleted = repo.get_view(view.id).await.unwrap();
+    assert!(deleted.is_none());
+}
+
+#[tokio::test]
 async fn test_delete_system_view_fails() {
     let conn = create_test_db().await;
     let repo = SqliteRepository::new(conn);

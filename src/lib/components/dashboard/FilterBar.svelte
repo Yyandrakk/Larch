@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { X, Folder, CircleDot, User } from '@lucide/svelte';
 	import { t } from 'svelte-i18n';
-	import type { Project, FilterObject, ProjectMetadata, SavedView } from '$lib/types';
+	import type { Project, FilterObject, ProjectMetadata } from '$lib/types';
 	import * as Popover from '$lib/components/ui/popover';
 
 	import FilterChip from './filters/FilterChip.svelte';
@@ -16,7 +16,6 @@
 		metadata = {},
 		filters = {},
 		currentUserId,
-		currentView = null,
 		isDirty = false,
 		canSave = false,
 		isSystemView = false,
@@ -30,7 +29,6 @@
 		metadata: Record<number, ProjectMetadata>;
 		filters: FilterObject;
 		currentUserId?: number;
-		currentView?: SavedView | null;
 		isDirty?: boolean;
 		canSave?: boolean;
 		isSystemView?: boolean;

@@ -38,7 +38,7 @@
 		<DropdownMenu.Root>
 			<DropdownMenu.Trigger
 				class={buttonVariants({ variant: 'outline', size: 'icon' }) + ' px-2'}
-				aria-label="More options"
+				aria-label={$t('common.moreOptions') || 'More options'}
 			>
 				<ChevronDown class="h-4 w-4" />
 			</DropdownMenu.Trigger>

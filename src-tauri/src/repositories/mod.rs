@@ -24,7 +24,7 @@ pub trait Repository: Send + Sync {
     ) -> Result<saved_views::Model>;
     async fn update_view(&self, id: i32, name: &str, filter_data: &str) -> Result<()>;
     async fn delete_view(&self, id: i32) -> Result<()>;
-    async fn touch_view(&self, id: i32) -> Result<()>;
+    async fn touch_view(&self, id: i32) -> Result<saved_views::Model>;
     async fn set_default_view(&self, id: i32) -> Result<()>;
 }
 
@@ -202,6 +202,12 @@ impl Repository for SqliteRepository {
             .map_err(|e| crate::error::Error::Database(e.to_string()))?;
 
         if let Some(existing_view) = view {
+            if existing_view.is_system {
+                return Err(crate::error::Error::Database(
+                    "Cannot modify system view".to_string(),
+                ));
+            }
+
             let mut active: saved_views::ActiveModel = existing_view.into();
             active.name = Set(name.to_string());
             active.filter_data = Set(filter_data.to_string());
@@ -210,7 +216,10 @@ impl Repository for SqliteRepository {
                 .await
                 .map_err(|e| crate::error::Error::Database(e.to_string()))?;
         } else {
-            return Err(crate::error::Error::Database(format!("View with id {} not found", id)));
+            return Err(crate::error::Error::Database(format!(
+                "View with id {} not found",
+                id
+            )));
         }
 
         Ok(())
@@ -238,7 +247,7 @@ impl Repository for SqliteRepository {
         Ok(())
     }
 
-    async fn touch_view(&self, id: i32) -> Result<()> {
+    async fn touch_view(&self, id: i32) -> Result<saved_views::Model> {
         let now = chrono::Utc::now().naive_utc();
 
         let view = saved_views::Entity::find_by_id(id)
@@ -249,39 +258,44 @@ impl Repository for SqliteRepository {
         if let Some(existing_view) = view {
             let mut active: saved_views::ActiveModel = existing_view.into();
             active.last_used = Set(now);
-            active
+            let updated = active
                 .update(&self.conn)
                 .await
                 .map_err(|e| crate::error::Error::Database(e.to_string()))?;
+            Ok(updated)
         } else {
-            return Err(crate::error::Error::Database(format!("View with id {} not found", id)));
+            Err(crate::error::Error::Database(format!(
+                "View with id {} not found",
+                id
+            )))
         }
-
-        Ok(())
     }
 
     async fn set_default_view(&self, id: i32) -> Result<()> {
-        saved_views::Entity::update_many()
-            .col_expr(saved_views::Column::IsDefault, sea_orm::sea_query::Expr::value(false))
-            .exec(&self.conn)
-            .await
-            .map_err(|e| crate::error::Error::Database(e.to_string()))?;
-
         let view = saved_views::Entity::find_by_id(id)
             .one(&self.conn)
             .await
             .map_err(|e| crate::error::Error::Database(e.to_string()))?;
 
-        if let Some(existing_view) = view {
-            let mut active: saved_views::ActiveModel = existing_view.into();
-            active.is_default = Set(true);
-            active
-                .update(&self.conn)
-                .await
-                .map_err(|e| crate::error::Error::Database(e.to_string()))?;
-        } else {
-            return Err(crate::error::Error::Database(format!("View with id {} not found", id)));
-        }
+        let existing_view = view.ok_or_else(|| {
+            crate::error::Error::Database(format!("View with id {} not found", id))
+        })?;
+
+        saved_views::Entity::update_many()
+            .col_expr(
+                saved_views::Column::IsDefault,
+                sea_orm::sea_query::Expr::value(false),
+            )
+            .exec(&self.conn)
+            .await
+            .map_err(|e| crate::error::Error::Database(e.to_string()))?;
+
+        let mut active: saved_views::ActiveModel = existing_view.into();
+        active.is_default = Set(true);
+        active
+            .update(&self.conn)
+            .await
+            .map_err(|e| crate::error::Error::Database(e.to_string()))?;
 
         Ok(())
     }

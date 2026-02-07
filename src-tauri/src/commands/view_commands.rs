@@ -33,7 +33,8 @@ pub async fn create_view(
     filter_data: String,
     repository: tauri::State<'_, SqliteRepository>,
 ) -> Result<saved_views::Model> {
-    if name.trim().is_empty() {
+    let name = name.trim().to_string();
+    if name.is_empty() {
         return Err(crate::error::Error::InvalidInput(
             "View name cannot be empty".to_string(),
         ));
@@ -56,7 +57,8 @@ pub async fn update_view(
     filter_data: String,
     repository: tauri::State<'_, SqliteRepository>,
 ) -> Result<()> {
-    if name.trim().is_empty() {
+    let name = name.trim().to_string();
+    if name.is_empty() {
         return Err(crate::error::Error::InvalidInput(
             "View name cannot be empty".to_string(),
         ));
@@ -94,15 +96,6 @@ pub async fn switch_view(
     repository.touch_view(id).await.map_err(|e| {
         log::error!("Failed to touch view {}: {}", id, e);
         e
-    })?;
-
-    let view = repository.get_view(id).await.map_err(|e| {
-        log::error!("Failed to get view {} after touch: {}", id, e);
-        e
-    })?;
-
-    view.ok_or_else(|| {
-        crate::error::Error::Database(format!("View with id {} not found after touch", id))
     })
 }
 
@@ -132,4 +125,8 @@ pub async fn sanitize_views(
         valid_status_ids.as_deref(),
     )
     .await
+    .map_err(|e| {
+        log::error!("sanitize_views failed: {:?}", e);
+        e
+    })
 }

@@ -104,7 +104,7 @@ async fn migrate_selected_projects(conn: &DatabaseConnection) -> Result<()> {
                 .map_err(|e| crate::error::Error::Database(e.to_string()))?;
 
             if my_projects_exists.is_none() {
-                let project_ids: serde_json::Value = serde_json::from_str(&config_entry.value)
+                let project_ids: Vec<i64> = serde_json::from_str(&config_entry.value)
                     .map_err(|e| crate::error::Error::Database(format!("Invalid JSON in selected_projects: {}", e)))?;
 
                 let filter_data = serde_json::json!({
@@ -130,6 +130,11 @@ async fn migrate_selected_projects(conn: &DatabaseConnection) -> Result<()> {
                     .insert(conn)
                     .await
                     .map_err(|e| crate::error::Error::Database(e.to_string()))?;
+
+                log::info!(
+                    "Migrated 'selected_projects' to 'My Projects' view. Projects: {:?}",
+                    project_ids
+                );
             }
         }
     }

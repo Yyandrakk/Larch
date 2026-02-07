@@ -252,7 +252,7 @@
 				await loadViews();
 				const systemView = views.find((v) => v.is_system);
 				if (systemView) {
-					handleViewSelect(systemView);
+					await handleViewSelect(systemView);
 				} else {
 					currentView = null;
 				}
@@ -438,7 +438,6 @@
 				{currentUserId}
 				bind:userInteractedWithProjectFilter
 				onApply={handleFilterChange}
-				{currentView}
 				{isDirty}
 				{canSave}
 				{isSystemView}
