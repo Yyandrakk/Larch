@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { tick, type Component } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { t } from 'svelte-i18n';
 	import { transformImageUrls } from '$lib/utils/image-auth';
 	import { readImage } from '@tauri-apps/plugin-clipboard-manager';
+	import { renderMarkdown } from '$lib/utils/markdown';
 	import { Bold, Italic, Code, Link, List, Eye, Edit3, Send, Loader2 } from '@lucide/svelte';
 
 	let {
@@ -11,14 +12,20 @@
 		placeholder = '',
 		disabled = false,
 		submitting = false,
+		submitLabel = undefined,
+		submitIcon = undefined,
 		onSubmit,
+		onCancel,
 		onUpload
 	}: {
 		value?: string;
 		placeholder?: string;
 		disabled?: boolean;
 		submitting?: boolean;
+		submitLabel?: string;
+		submitIcon?: Component | any;
 		onSubmit?: (text: string) => void;
+		onCancel?: () => void;
 		onUpload?: (file: File) => Promise<string | undefined>;
 	} = $props();
 
@@ -252,61 +259,7 @@
 	// Markdown Rendering (Preview Mode)
 	// ============================================================================
 
-	function escapeHtml(text: string): string {
-		return text
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			.replace(/"/g, '&quot;')
-			.replace(/'/g, '&#039;');
-	}
-
-	function sanitizeUrl(url: string): string {
-		const trimmed = url.trim().toLowerCase();
-		if (
-			trimmed.startsWith('http://') ||
-			trimmed.startsWith('https://') ||
-			trimmed.startsWith('mailto:') ||
-			trimmed.startsWith('tel:') ||
-			trimmed.startsWith('#') ||
-			trimmed.startsWith('/')
-		) {
-			return url;
-		}
-		return '#';
-	}
-
-	function renderMarkdown(text: string): string {
-		if (!text) return '';
-
-		// IMPORTANT: Escape HTML FIRST to prevent XSS
-		let result = escapeHtml(text);
-
-		// Apply markdown transformations on escaped text
-		const html = result
-			// Images (must come before links)
-			.replace(/!\[(.*?)\]\((.+?)\)/g, (_, alt, url) => {
-				const safeUrl = sanitizeUrl(url);
-				return `<img src="${safeUrl}" alt="${alt}" class="max-w-full rounded border my-2" />`;
-			})
-			// Bold (must come before italic)
-			.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-			// Italic
-			.replace(/\*(.+?)\*/g, '<em>$1</em>')
-			// Code
-			.replace(/`(.+?)`/g, '<code class="bg-muted px-1 rounded">$1</code>')
-			// Links
-			.replace(/\[(.+?)\]\((.+?)\)/g, (_, linkText, url) => {
-				const safeUrl = sanitizeUrl(url);
-				return `<a href="${safeUrl}" class="text-primary underline" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
-			})
-			// List items
-			.replace(/^- (.+)$/gm, '• $1')
-			// Line breaks
-			.replace(/\n/g, '<br>');
-
-		return transformImageUrls(html);
-	}
+	// renderMarkdown logic has been moved to $lib/utils/markdown.ts
 
 	// ============================================================================
 	// Derived State
@@ -423,13 +376,23 @@
 				{$t('issueDetail.shiftEnterToSubmit') || 'Shift+Enter to submit'}
 			{/if}
 		</span>
-		<Button size="sm" onclick={handleSubmit} disabled={!canSubmit}>
-			{#if submitting}
-				<Loader2 class="mr-2 h-4 w-4 animate-spin" />
-			{:else}
-				<Send class="mr-2 h-4 w-4" />
+		<div class="flex items-center gap-2">
+			{#if onCancel}
+				<Button variant="ghost" size="sm" onclick={onCancel} disabled={submitting || uploading}>
+					{$t('common.cancel') || 'Cancel'}
+				</Button>
 			{/if}
-			{$t('issueDetail.addComment') || 'Add comment'}
-		</Button>
+			<Button size="sm" onclick={handleSubmit} disabled={!canSubmit}>
+				{#if submitting}
+					<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+				{:else if submitIcon}
+					{@const Icon = submitIcon}
+					<Icon class="mr-2 h-4 w-4" />
+				{:else}
+					<Send class="mr-2 h-4 w-4" />
+				{/if}
+				{submitLabel || $t('issueDetail.addComment') || 'Add comment'}
+			</Button>
+		</div>
 	</div>
 </div>

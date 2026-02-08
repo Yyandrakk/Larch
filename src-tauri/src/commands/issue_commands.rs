@@ -75,6 +75,7 @@ pub async fn change_issue_status(
             status: Some(status_id),
             comment: None,
             description: None,
+            subject: None,
             assigned_to: None,
             priority: None,
             severity: None,
@@ -116,6 +117,7 @@ pub async fn add_issue_comment(
             status: None,
             comment: Some(comment.to_string()),
             description: None,
+            subject: None,
             assigned_to: None,
             priority: None,
             severity: None,
@@ -173,6 +175,7 @@ pub async fn commit_issue_description(
             status: None,
             comment: None,
             description: Some(description.to_string()),
+            subject: None,
             assigned_to: None,
             priority: None,
             severity: None,
@@ -222,6 +225,7 @@ pub async fn change_issue_assignee(
             status: None,
             comment: None,
             description: None,
+            subject: None,
             assigned_to: Some(assignee_id),
             priority: None,
             severity: None,
@@ -261,6 +265,7 @@ pub async fn change_issue_priority(
             status: None,
             comment: None,
             description: None,
+            subject: None,
             assigned_to: None,
             priority: Some(priority_id),
             severity: None,
@@ -300,6 +305,7 @@ pub async fn change_issue_severity(
             status: None,
             comment: None,
             description: None,
+            subject: None,
             assigned_to: None,
             priority: None,
             severity: Some(severity_id),
@@ -339,6 +345,7 @@ pub async fn change_issue_type(
             status: None,
             comment: None,
             description: None,
+            subject: None,
             assigned_to: None,
             priority: None,
             severity: None,
@@ -383,6 +390,7 @@ pub async fn update_issue_tags(
             status: None,
             comment: None,
             description: None,
+            subject: None,
             assigned_to: None,
             priority: None,
             severity: None,
@@ -510,6 +518,104 @@ pub async fn get_issue_attachments(
             log::info!("Unauthorized, attempting token refresh");
             token_refresh::refresh_token(&client).await?;
             fetch(&client, project_id, issue_id).await
+        }
+        result => result,
+    }
+}
+
+/// Change the subject (title) of an issue
+/// Uses optimistic locking via the version field
+#[tauri::command]
+pub async fn change_issue_subject(
+    client: tauri::State<'_, TaigaClient>,
+    issue_id: i64,
+    subject: String,
+    version: i64,
+) -> Result<IssueDetail> {
+    async fn fetch(
+        client: &TaigaClient,
+        issue_id: i64,
+        subject: &str,
+        version: i64,
+    ) -> Result<IssueDetail> {
+        let token = credentials::get_api_token()?;
+        let request = taiga_client::models::PatchIssueRequest {
+            version,
+            status: None,
+            comment: None,
+            description: None,
+            subject: Some(subject.to_string()),
+            assigned_to: None,
+            priority: None,
+            severity: None,
+            type_: None,
+            tags: None,
+        };
+        let updated_issue_dto = client.patch_issue(&token, issue_id, request).await?;
+        Ok(IssueDetail::from_dto(updated_issue_dto))
+    }
+
+    match fetch(&client, issue_id, &subject, version).await {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(&client, issue_id, &subject, version).await
+        }
+        result => result,
+    }
+}
+
+/// Edit an existing issue comment
+#[tauri::command]
+pub async fn edit_issue_comment(
+    client: tauri::State<'_, TaigaClient>,
+    issue_id: i64,
+    comment_id: String,
+    comment: String,
+) -> Result<()> {
+    async fn fetch(
+        client: &TaigaClient,
+        issue_id: i64,
+        comment_id: &str,
+        comment: &str,
+    ) -> Result<()> {
+        let token = credentials::get_api_token()?;
+        client
+            .edit_issue_comment(&token, issue_id, comment_id.to_string(), comment)
+            .await?;
+        Ok(())
+    }
+
+    match fetch(&client, issue_id, &comment_id, &comment).await {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(&client, issue_id, &comment_id, &comment).await
+        }
+        result => result,
+    }
+}
+
+/// Delete an issue comment
+#[tauri::command]
+pub async fn delete_issue_comment(
+    client: tauri::State<'_, TaigaClient>,
+    issue_id: i64,
+    comment_id: String,
+) -> Result<()> {
+    async fn fetch(client: &TaigaClient, issue_id: i64, comment_id: &str) -> Result<()> {
+        let token = credentials::get_api_token()?;
+        client
+            .delete_issue_comment(&token, issue_id, comment_id.to_string())
+            .await?;
+        Ok(())
+    }
+
+    match fetch(&client, issue_id, &comment_id).await {
+        Err(crate::error::Error::Unauthorized) => {
+            log::info!("Unauthorized, attempting token refresh");
+            token_refresh::refresh_token(&client).await?;
+            fetch(&client, issue_id, &comment_id).await
         }
         result => result,
     }
