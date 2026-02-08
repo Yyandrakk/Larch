@@ -1,19 +1,29 @@
 # Larch
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tauri](https://img.shields.io/badge/Tauri-v2-blue.svg)](https://tauri.app/)
+[![Svelte](https://img.shields.io/badge/Svelte-5-orange.svg)](https://svelte.dev/)
+
 **Larch** is a modern, cross-platform desktop client for [Taiga.io](https://taiga.io/), designed to streamline issue management across multiple projects. It acts as a "single pane of glass" for developers and managers who need to triage, track, and respond to issues without constantly switching context between different project URLs.
 
-![Larch Dashboard](./docs/screenshots/dashboard.png)
-_(Note: Add a screenshot of the dashboard here if available)_
+![Dashboard Screenshot](./docs/screenshots/dashboard-overview.png)
 
-## ✨ Key Features (v1.0)
+## ✨ Key Features (v2.1)
 
-- **Unified Dashboard**: View issues from multiple projects in a single, filterable table.
-- **Intelligent Triage**: Automatically filters for actionable (Open) issues by default.
-- **Advanced Filtering**: Filter by Status, Project, and Assignee with powerful "Include/Exclude" logic.
-- **Offline Drafts**: Descriptions and comments are auto-saved locally. Never lose your work if the internet drops.
-- **Conflict Resolution**: Detects if an issue has been modified by someone else before you save, preventing accidental overwrites.
-- **Cross-Platform**: Native support for **Linux** (Debian/Ubuntu/Fedora), **Windows**, and **macOS**.
-- **Secure**: API tokens are stored securely in your operating system's native keychain.
+- **Unified Dashboard**: View and manage issues from multiple Taiga projects in a single, filterable interface.
+- **Saved Views**: Define, persist, and switch between complex filter contexts instantly. Perfect for managing different workflows or clients.
+- **Intelligent Triage**: Automatically filters for actionable issues by default, with a visual **Dirty State** indicator for unsaved filter changes.
+- **Advanced Issue Management**: Two-column detail view for efficient editing, label management, attachments, and comment threading.
+- **Security First**: API tokens are stored securely in your operating system's native keychain. Features automatic **JWT Refresh** for uninterrupted sessions.
+- **Cross-Platform**: Native performance and look-and-feel on **Linux**, **Windows**, and **macOS**.
+
+## 📸 Screenshots
+
+|                        Dashboard Overview                        |                     Issue Detail                     |
+| :--------------------------------------------------------------: | :--------------------------------------------------: |
+| ![Dashboard Overview](./docs/screenshots/dashboard-overview.png) | ![Issue Detail](./docs/screenshots/issue-detail.png) |
+|                         **Saved Views**                          |                   **Secure Login**                   |
+|        ![Saved Views](./docs/screenshots/saved-views.png)        |        ![Login](./docs/screenshots/login.png)        |
 
 ## 🚀 Installation
 
@@ -40,35 +50,44 @@ Larch is built with **Tauri v2**, **Rust**, and **Svelte 5**.
 ### Prerequisites
 
 - [Rust](https://www.rust-lang.org/tools/install) (latest stable)
-- [Node.js](https://nodejs.org/) (LTS) & pnpm
-- System dependencies for Tauri (see [Prerequisites](https://tauri.app/v1/guides/getting-started/prerequisites))
+- [Node.js](https://nodejs.org/) (LTS) & [pnpm](https://pnpm.io/)
+- System dependencies for Tauri (see [Tauri v2 Prerequisites](https://v2.tauri.app/start/prerequisites/))
 
 ### Setup
 
-1.  Clone the repository:
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Yyandrakk/Larch.git
+   cd Larch
+   ```
+2. Install dependencies:
+   ```bash
+   pnpm install
+   ```
+3. Run in development mode:
+   ```bash
+   just dev
+   ```
 
-    ```bash
-    git clone https://github.com/Yyandrakk/Larch.git
-    cd Larch
-    ```
+### Useful Commands
 
-2.  Install frontend dependencies:
+We use `just` as a command runner:
 
-    ```bash
-    pnpm install
-    ```
-
-3.  Run in development mode:
-
-    ```bash
-    pnpm tauri dev
-    ```
+- `just dev`: Run in development mode
+- `just check`: Run all checks (clippy + svelte-check)
+- `just test`: Run all tests
+- `just format`: Format all code
 
 ## 🏗️ Architecture
 
-- **Frontend**: Svelte 5 + TypeScript + TailwindCSS + shadcn-svelte.
-- **Backend**: Rust (Tauri).
-- **Storage**: SQLite (local data/drafts) + OS Keyring (secrets).
-- **Communication**: Tauri Commands (IPC) & Context7 MCP.
+Larch follows a **Clean Architecture** pattern to ensure maintainability and testability:
 
-See [docs/architecture.md](docs/architecture.md) for details.
+- **Frontend**: Svelte 5 (Runes) + TypeScript + TailwindCSS + shadcn-svelte.
+- **Backend**: Rust (Tauri v2) with a dedicated `taiga-client` crate.
+- **Data Layer**: SQLite with **SeaORM** for persistence and `keyring-rs` for secure credential storage.
+
+For more details, see the [Architecture Documentation](./docs/architecture.md).
+
+## 📄 License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.

@@ -14,9 +14,46 @@ Our architecture is guided by the principles of **Clean Architecture**:
 
 Larch is a [Tauri](https://tauri.app/) application composed of three main parts:
 
-1.  **Frontend (`larch-app/src`):** A [Svelte](https://svelte.dev/) + TypeScript single-page application that provides the user interface.
-2.  **Backend (`larch-app/src-tauri`):** The core application logic written in Rust. It exposes functionality to the frontend via Tauri commands.
-3.  **API Client (`larch-app/crates/taiga-client`):** A dedicated, independent Rust crate responsible for all communication with the external Taiga.io API.
+1.  **Frontend (`src/`):** A [Svelte](https://svelte.dev/) + TypeScript single-page application that provides the user interface.
+2.  **Backend (`src-tauri/`):** The core application logic written in Rust. It exposes functionality to the frontend via Tauri commands.
+3.  **API Client (`crates/taiga-client/`):** A dedicated, independent Rust crate responsible for all communication with the external Taiga.io API.
+
+## Frontend Structure
+
+The frontend is organized into screens and reusable components, following Svelte 5 patterns.
+
+### Screens
+
+- **Login**: Handles user authentication and Taiga instance URL configuration.
+- **Dashboard**: The main "single pane of glass" view containing the aggregated issue table.
+- **ProjectConfig**: Allows users to select which projects to track and manage their local settings.
+
+### Key Components
+
+- **ViewSwitcher**: Header-level dropdown for navigating between Saved Views.
+- **FilterBar**: Interactive bar for applying filters (Project, Status, Assignee) with "Dirty State" detection.
+- **IssueDetailSheet**: An overlay (Sheet) displaying full issue details, descriptions, and comments.
+- **IssueMetadataSidebar**: A sidebar within the detail view for managing issue attributes (Status, Priority, Severity).
+
+## Data Layer
+
+Larch uses SQLite for local persistence, managed via SeaORM.
+
+| Entity        | Description                                                            |
+| :------------ | :--------------------------------------------------------------------- |
+| `config`      | Stores application-wide settings and the active Taiga instance URL.    |
+| `drafts`      | Persists unsaved issue descriptions and comments to prevent data loss. |
+| `saved_views` | Stores user-defined filter presets (projects, statuses, assignees).    |
+
+## Authentication Flow
+
+Larch implements a secure, transparent authentication flow:
+
+1. **Login**: User provides Taiga URL and credentials.
+2. **Token Acquisition**: Backend exchanges credentials for a JWT (Access + Refresh tokens).
+3. **Secure Storage**: Tokens are stored in the OS Keyring via `keyring-rs`.
+4. **Transparent Refresh**: The `taiga-client` middleware automatically handles JWT expiration by using the Refresh token to acquire a new Access token without user intervention.
+5. **Session Management**: The `TaigaClient` is maintained in Tauri's managed state during the application lifecycle.
 
 ## Backend Internal Architecture
 

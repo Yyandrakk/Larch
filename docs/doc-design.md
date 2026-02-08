@@ -1,8 +1,9 @@
 # Larch - Design Document
 
+> **Status:** ✅ Implemented
 > **Author:** Oscar Garcia de Lara Parreño
-> **Version:** 2.1 (Saved Views & Triage Persistence Phase)
-> **Last Updated:** 2026-02-01
+> **Version:** 2.1 (Implemented)
+> **Last Updated:** 2026-02-08
 > **Project Name:** Larch
 > **Baseline:** v2.0 (Stitch Redesign, Svelte 5, SeaORM)
 
@@ -36,12 +37,12 @@ The vision for Larch is to create a centralized, multi-project issue management 
 
 ### 2.1. Goals (v2.1)
 
-- [ ] **View Persistence:** Implement local storage for custom filters in SQLite using SeaORM.
-- [ ] **Dropdown View Switcher:** Replace the static title with an interactive selector to switch and delete views.
-- [ ] **Contextual Save Management:** Implement a "Split Button" in the filter bar to save changes or create new views without leaving the triage flow.
-- [ ] **Integrity Validation:** Backend logic to detect and sanitize orphan project or status IDs within saved views.
-- [ ] **Dirty State Indicator:** A subtle visual notification (asterisk or dot) to alert users of unsaved changes in the current view.
-- [ ] **Functional Continuity:** Maintain all v2.0 features, including sidebar navigation, overlay details, link copying, and clipboard screenshot support.
+- [x] **View Persistence:** Implement local storage for custom filters in SQLite using SeaORM.
+- [x] **Dropdown View Switcher:** Replace the static title with an interactive selector to switch and delete views.
+- [x] **Contextual Save Management:** Implement a "Split Button" in the filter bar to save changes or create new views without leaving the triage flow.
+- [x] **Integrity Validation:** Backend logic to detect and sanitize orphan project or status IDs within saved views.
+- [x] **Dirty State Indicator:** A subtle visual notification (asterisk or dot) to alert users of unsaved changes in the current view.
+- [x] **Functional Continuity:** Maintain all v2.0 features, including sidebar navigation, overlay details, link copying, and clipboard screenshot support.
 
 ### 2.2. Non-Goals
 
