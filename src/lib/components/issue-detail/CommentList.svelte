@@ -6,6 +6,7 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import { transformImageUrls } from '$lib/utils/image-auth';
 	import { sanitizeHtml } from '$lib/sanitize';
+	import { renderMarkdown } from '$lib/utils/markdown';
 	import { getCurrentUser } from '$lib/stores/user.svelte';
 	import { CMD_EDIT_ISSUE_COMMENT, CMD_DELETE_ISSUE_COMMENT } from '$lib/commands.svelte';
 	import { Pencil, Trash2, Check, X, Loader2 } from '@lucide/svelte';
@@ -124,9 +125,8 @@
 				// However, simplistic update:
 				const updated = { ...comments[index] };
 				updated.comment = editingText;
-				// Clear HTML so it falls back to text or needs re-fetch.
-				//Ideally we'd get the new HTML back but for now this works.
-				updated.comment_html = undefined;
+				// Render HTML locally for optimistic update
+				updated.comment_html = renderMarkdown(editingText);
 				updated.is_edited = true;
 
 				const newComments = [...comments];

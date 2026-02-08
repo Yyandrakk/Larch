@@ -174,7 +174,6 @@ impl From<&IssueHistoryEntryDto> for HistoryEntry {
             "comment".to_string()
         };
 
-        let has_comment = !dto.comment.is_empty();
         let is_deleted = dto.delete_comment_date.is_some();
         let is_edited = dto.edit_comment_date.is_some();
 
@@ -188,16 +187,8 @@ impl From<&IssueHistoryEntryDto> for HistoryEntry {
             user_photo: dto.user.photo.clone(),
             created_at: dto.created_at.clone(),
             entry_type,
-            comment: if has_comment {
-                Some(dto.comment.clone())
-            } else {
-                None
-            },
-            comment_html: if has_comment {
-                Some(dto.comment_html.clone())
-            } else {
-                None
-            },
+            comment: dto.comment.clone(),
+            comment_html: dto.comment_html.clone(),
             is_deleted,
             is_edited,
             changes,

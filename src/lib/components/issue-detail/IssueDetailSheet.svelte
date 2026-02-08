@@ -1032,9 +1032,9 @@
 							autofocus
 						/>
 						<Button
-							variant="ghost"
+							variant="secondary"
 							size="icon"
-							class="text-destructive h-9 w-9"
+							class="h-9 w-9"
 							onclick={cancelEditingTitle}
 							disabled={titleSaving}
 							title={$t('common.cancel') || 'Cancel'}
@@ -1043,9 +1043,9 @@
 							<X class="h-4 w-4" />
 						</Button>
 						<Button
-							variant="ghost"
+							variant="default"
 							size="icon"
-							class="h-9 w-9 text-green-500 hover:text-green-600"
+							class="h-9 w-9"
 							onclick={saveTitle}
 							disabled={titleSaving}
 							title={$t('common.save') || 'Save'}

@@ -234,16 +234,23 @@ pub struct HistoryUserDto {
     pub is_active: bool,
 }
 
+/// User info for deleted comments (minimal info)
+#[derive(Debug, Clone, Deserialize)]
+pub struct HistoryDeleteUserDto {
+    pub pk: i64,
+    pub name: String,
+}
+
 /// History entry from GET /api/v1/history/issue/{id}
 #[derive(Debug, Clone, Deserialize)]
 pub struct IssueHistoryEntryDto {
     pub id: String,
     pub user: HistoryUserDto,
     pub created_at: String,
-    pub comment: String,
-    pub comment_html: String,
+    pub comment: Option<String>,
+    pub comment_html: Option<String>,
     pub delete_comment_date: Option<String>,
-    pub delete_comment_user: Option<HistoryUserDto>,
+    pub delete_comment_user: Option<HistoryDeleteUserDto>,
     pub edit_comment_date: Option<String>,
     #[serde(rename = "type")]
     pub entry_type: i32, // 1 = change, 2 = comment

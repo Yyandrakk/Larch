@@ -326,8 +326,18 @@ impl TaigaClient {
         log::info!("Get Issue History response status: {}", response.status());
 
         if response.status().is_success() {
-            let history = response.json::<Vec<IssueHistoryEntryDto>>().await?;
-            Ok(history)
+            let body = response.text().await?;
+            match serde_json::from_str::<Vec<IssueHistoryEntryDto>>(&body) {
+                Ok(history) => Ok(history),
+                Err(e) => {
+                    log::error!("Failed to parse issue history: {}", e);
+                    log::error!(
+                        "Raw response body (first 2000 chars): {}",
+                        &body[..body.len().min(2000)]
+                    );
+                    Err(TaigaClientError::Serde(e))
+                }
+            }
         } else {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
@@ -769,7 +779,7 @@ impl TaigaClient {
     }
 
     /// Edit an issue comment
-    /// PATCH /api/v1/history/issue/{issue_id}/{comment_id}
+    /// POST /api/v1/history/issue/{issue_id}/edit_comment?id={comment_id}
     pub async fn edit_issue_comment(
         &self,
         token: &Secret<String>,
@@ -777,7 +787,7 @@ impl TaigaClient {
         comment_id: String,
         new_comment: &str,
     ) -> Result<(), TaigaClientError> {
-        let url = self.build_url(&format!("history/issue/{}/{}", issue_id, comment_id))?;
+        let url = self.build_url(&format!("history/issue/{}/edit_comment", issue_id))?;
         log::info!(
             "Editing comment {} on issue {} at {}",
             comment_id,
@@ -789,7 +799,8 @@ impl TaigaClient {
 
         let response = self
             .client
-            .patch(url)
+            .post(url)
+            .query(&[("id", comment_id)])
             .bearer_auth(token.expose_secret())
             .json(&body)
             .send()
@@ -815,17 +826,14 @@ impl TaigaClient {
     }
 
     /// Delete an issue comment
-    /// POST /api/v1/history/issue/{issue_id}/{comment_id}/delete_comment
+    /// POST /api/v1/history/issue/{issue_id}/delete_comment?id={comment_id}
     pub async fn delete_issue_comment(
         &self,
         token: &Secret<String>,
         issue_id: i64,
         comment_id: String,
     ) -> Result<(), TaigaClientError> {
-        let url = self.build_url(&format!(
-            "history/issue/{}/{}/delete_comment",
-            issue_id, comment_id
-        ))?;
+        let url = self.build_url(&format!("history/issue/{}/delete_comment", issue_id))?;
         log::info!(
             "Deleting comment {} on issue {} at {}",
             comment_id,
@@ -836,6 +844,7 @@ impl TaigaClient {
         let response = self
             .client
             .post(url)
+            .query(&[("id", comment_id)])
             .bearer_auth(token.expose_secret())
             .send()
             .await?;
