@@ -9,3 +9,9 @@
 **Vulnerability:** DOMPurify strips `target="_blank"` by default. If allowed, it creates a "Reverse Tabnabbing" risk where the opened page can access `window.opener`.
 **Learning:** To support opening links in new tabs securely, one must explicitly allow `target` in DOMPurify AND enforce `rel="noopener noreferrer"`. Since DOMPurify hooks are global/singleton, wrapping them in `try/finally` is crucial to avoid side effects.
 **Prevention:** Use a centralized `sanitizeHtml` wrapper that adds the `afterSanitizeAttributes` hook temporarily.
+
+## 2025-05-17 - DOMPurify Hook Removal Side Effects
+
+**Vulnerability:** `DOMPurify.removeHook` removes ALL hooks for a given entry point, not just the last one added. This means a localized usage with `try/finally` can inadvertently disable security hooks registered elsewhere in the application.
+**Learning:** The previous pattern of wrapping hooks in `try/finally` (recommended on 2025-05-16) is flawed because `removeHook` is destructive to global state.
+**Prevention:** Register DOMPurify hooks once globally at module initialization to ensure consistency and avoid conflicts.

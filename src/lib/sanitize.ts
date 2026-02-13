@@ -6,21 +6,17 @@ const hook = (node: Element) => {
 	}
 };
 
+// Add hook globally once to enforce rel="noopener noreferrer"
+// This prevents adding duplicate hooks on every call and avoids
+// the side effect of wiping all hooks with removeHook().
+DOMPurify.addHook('afterSanitizeAttributes', hook);
+
 export function sanitizeHtml(html: string): string {
 	if (!html) return '';
 
-	// Add hook to enforce rel="noopener noreferrer"
-	DOMPurify.addHook('afterSanitizeAttributes', hook);
-
-	try {
-		// Sanitize with target attribute allowed
-		// We use a try-finally block to ensure the hook is always removed
-		const clean = DOMPurify.sanitize(html, {
-			ADD_ATTR: ['target']
-		});
-		return clean;
-	} finally {
-		// Remove the hook to avoid side effects on other DOMPurify usages
-		DOMPurify.removeHook('afterSanitizeAttributes');
-	}
+	// Sanitize with target attribute allowed.
+	// The hook above ensures target="_blank" is safe.
+	return DOMPurify.sanitize(html, {
+		ADD_ATTR: ['target']
+	});
 }
