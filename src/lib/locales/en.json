@@ -95,7 +95,8 @@
 		"status": "Status",
 		"project": "Project",
 		"assignedTo": "Assignee",
-		"unassigned": "Unassigned"
+		"unassigned": "Unassigned",
+		"changedIndicator": "Modified since last refresh"
 	},
 	"filters": {
 		"filter": "Filter",
