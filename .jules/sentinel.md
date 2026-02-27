@@ -12,6 +12,6 @@
 
 ## 2025-05-18 - Global DOMPurify Hooks
 
-**Vulnerability:** The `sanitizeHtml` function was adding and removing a DOMPurify hook on every call. `DOMPurify.removeHook` removes *all* hooks for a given entry point, potentially disabling other security hooks and causing race conditions.
+**Vulnerability:** The `sanitizeHtml` function was adding and removing a DOMPurify hook on every call. `DOMPurify.removeHook` removes _all_ hooks for a given entry point, potentially disabling other security hooks and causing race conditions.
 **Learning:** DOMPurify hooks modify the global instance. Adding/removing them dynamically is unsafe in a modular application.
 **Prevention:** Register DOMPurify hooks once at the module top-level (on import) to ensure they are permanently active and do not interfere with other components.
