@@ -68,6 +68,18 @@ pub fn run() {
                     }
                 };
 
+                if !client.is_managed_url(&target_url) {
+                    log::warn!("Rejected request to unmanaged URL: {}", target_url);
+                    if let Ok(response) = tauri::http::Response::builder()
+                        .status(403)
+                        .header("Access-Control-Allow-Origin", "*")
+                        .body(vec![])
+                    {
+                        responder.respond(response);
+                    }
+                    return;
+                }
+
                 let token = crate::services::credentials::get_api_token().ok();
 
                 match client.get_raw_resource(&target_url, token.as_ref()).await {
