@@ -30,6 +30,24 @@ export function normalizeFilter(filter: FilterObject): FilterObject {
 	const assignee_exclude = processBoolean(filter.assignee_exclude);
 	if (assignee_exclude) normalized.assignee_exclude = assignee_exclude;
 
+	const priority_ids = processArray(filter.priority_ids);
+	if (priority_ids) normalized.priority_ids = priority_ids;
+
+	const priority_exclude = processBoolean(filter.priority_exclude);
+	if (priority_exclude) normalized.priority_exclude = priority_exclude;
+
+	const severity_ids = processArray(filter.severity_ids);
+	if (severity_ids) normalized.severity_ids = severity_ids;
+
+	const severity_exclude = processBoolean(filter.severity_exclude);
+	if (severity_exclude) normalized.severity_exclude = severity_exclude;
+
+	const type_ids = processArray(filter.type_ids);
+	if (type_ids) normalized.type_ids = type_ids;
+
+	const type_exclude = processBoolean(filter.type_exclude);
+	if (type_exclude) normalized.type_exclude = type_exclude;
+
 	return normalized;
 }
 
