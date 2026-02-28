@@ -1,9 +1,10 @@
 <script lang="ts">
+	import { t } from 'svelte-i18n';
+	import { SvelteMap } from 'svelte/reactivity';
+	import type { Member, ProjectMetadata } from '$lib/types';
 	import * as Popover from '$lib/components/ui/popover';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Search, UserSearch, UserX, Check, Combine, Ban } from '@lucide/svelte';
-	import { t } from 'svelte-i18n';
-	import type { Member, ProjectMetadata } from '$lib/types';
 
 	const UNASSIGNED_ID = -1;
 
@@ -44,7 +45,7 @@
 	}
 
 	let allMembers = $derived.by(() => {
-		const memberMap = new Map<number, MemberWithRole>();
+		const memberMap = new SvelteMap<number, MemberWithRole>();
 
 		Object.values(metadata).forEach((meta) => {
 			meta.members.forEach((m) => {

@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { X, Folder, CircleDot, User, Flag, AlertTriangle, Tag } from '@lucide/svelte';
 	import { t } from 'svelte-i18n';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { Project, FilterObject, ProjectMetadata } from '$lib/types';
 	import * as Popover from '$lib/components/ui/popover';
+	import { X, Folder, CircleDot, User, Flag, AlertTriangle, Tag } from '@lucide/svelte';
 
 	import FilterChip from './filters/FilterChip.svelte';
 	import AddFilterDropdown from './filters/AddFilterDropdown.svelte';
@@ -244,8 +244,8 @@
 		const typeNames = new SvelteSet<string>();
 		filters.type_ids.forEach((tid) => {
 			Object.values(metadata).forEach((meta) => {
-				const type = meta.issue_types.find((t) => t.id === tid);
-				if (type) typeNames.add(type.name);
+				const typeItem = meta.issue_types.find((it) => it.id === tid);
+				if (typeItem) typeNames.add(typeItem.name);
 			});
 		});
 		if (typeNames.size === 1) {

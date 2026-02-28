@@ -1,9 +1,11 @@
 <script lang="ts">
+	import { t } from 'svelte-i18n';
+	import { SvelteMap } from 'svelte/reactivity';
+	import type { IssueType, ProjectMetadata, Project } from '$lib/types';
+	import { getProjectColor, getProjectTagStyles } from '$lib/utils/projectColors';
 	import * as Popover from '$lib/components/ui/popover';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Search, Tag, GitMerge, Puzzle, Combine, Ban } from '@lucide/svelte';
-	import { t } from 'svelte-i18n';
-	import type { IssueType, ProjectMetadata, Project } from '$lib/types';
 
 	let {
 		metadata = {},
@@ -37,11 +39,6 @@
 		wasOpen = open;
 	});
 
-	function getProjectTagStyles(pName: string): string {
-		const color = getProjectColor(pName);
-		return `${color.replace('-500', '-500/10')} ${color.replace('bg-', 'text-').replace('-500', '-400')}`;
-	}
-
 	interface TypeWithProjects {
 		issue_type: IssueType;
 		projectIds: number[];
@@ -49,12 +46,12 @@
 	}
 
 	let groupedTypes = $derived.by(() => {
-		const typeMap = new Map<string, TypeWithProjects>();
+		const typeMap = new SvelteMap<string, TypeWithProjects>();
 
 		Object.entries(metadata).forEach(([pidStr, meta]) => {
 			const pid = parseInt(pidStr);
 			const project = projects.find((p) => p.id === pid);
-			const projectName = project?.name || `Project ${pid}`;
+			const projectName = project?.name || $t('filters.projectFallback', { values: { pid } });
 
 			meta.issue_types.forEach((issue_type) => {
 				const key = issue_type.name.toLowerCase();
@@ -77,22 +74,22 @@
 
 	let unifiedTypes = $derived(
 		groupedTypes
-			.filter((t) => t.projectIds.length > 1)
-			.filter((t) => t.issue_type.name.toLowerCase().includes(searchQuery.toLowerCase()))
+			.filter((tp) => tp.projectIds.length > 1)
+			.filter((tp) => tp.issue_type.name.toLowerCase().includes(searchQuery.toLowerCase()))
 	);
 
 	let projectSpecificTypes = $derived(
 		groupedTypes
-			.filter((t) => t.projectIds.length === 1)
-			.filter((t) => t.issue_type.name.toLowerCase().includes(searchQuery.toLowerCase()))
+			.filter((tp) => tp.projectIds.length === 1)
+			.filter((tp) => tp.issue_type.name.toLowerCase().includes(searchQuery.toLowerCase()))
 	);
 
 	function getTypeIdsByName(typeName: string): number[] {
 		const ids: number[] = [];
 		Object.values(metadata).forEach((meta) => {
-			meta.issue_types.forEach((t) => {
-				if (t.name.toLowerCase() === typeName.toLowerCase()) {
-					ids.push(t.id);
+			meta.issue_types.forEach((it) => {
+				if (it.name.toLowerCase() === typeName.toLowerCase()) {
+					ids.push(it.id);
 				}
 			});
 		});
@@ -123,41 +120,28 @@
 		localSelectedIds = [];
 	}
 
-	function getProjectColor(projectName: string): string {
-		const colors = [
-			'bg-emerald-500',
-			'bg-purple-500',
-			'bg-blue-500',
-			'bg-orange-500',
-			'bg-pink-500',
-			'bg-cyan-500'
-		];
-		const hash = projectName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-		return colors[hash % colors.length];
-	}
-
 	let selectedCount = $derived(
-		groupedTypes.filter((t) => isTypeSelected(t.issue_type.name)).length
+		groupedTypes.filter((tp) => isTypeSelected(tp.issue_type.name)).length
 	);
 
 	let allVisibleTypes = $derived([...unifiedTypes, ...projectSpecificTypes]);
 
 	function getAllVisibleTypeIds() {
 		const ids: number[] = [];
-		allVisibleTypes.forEach((t) => {
-			ids.push(...getTypeIdsByName(t.issue_type.name));
+		allVisibleTypes.forEach((tp) => {
+			ids.push(...getTypeIdsByName(tp.issue_type.name));
 		});
 		return ids;
 	}
 
 	let areAllVisibleSelected = $derived.by(() => {
 		if (allVisibleTypes.length === 0) return false;
-		return allVisibleTypes.every((t) => isTypeSelected(t.issue_type.name));
+		return allVisibleTypes.every((tp) => isTypeSelected(tp.issue_type.name));
 	});
 
 	let isAnyVisibleSelected = $derived.by(() => {
 		if (allVisibleTypes.length === 0) return false;
-		return allVisibleTypes.some((t) => isTypeSelected(t.issue_type.name));
+		return allVisibleTypes.some((tp) => isTypeSelected(tp.issue_type.name));
 	});
 
 	let masterChecked = $derived(areAllVisibleSelected);

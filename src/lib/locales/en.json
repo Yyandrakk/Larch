@@ -153,7 +153,8 @@
 		"noTypes": "No types found",
 		"unifiedPriorities": "Unified Priorities",
 		"unifiedSeverities": "Unified Severities",
-		"unifiedTypes": "Unified Types"
+		"unifiedTypes": "Unified Types",
+		"projectFallback": "Project {pid}"
 	},
 	"issueDetail": {
 		"loading": "Loading issue...",

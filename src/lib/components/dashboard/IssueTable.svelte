@@ -19,7 +19,7 @@
 	} = $props();
 
 	function getProjectName(id: number): string {
-		return projects.find((p: Project) => p.id === id)?.name || `Project ${id}`;
+		return projects.find((p: Project) => p.id === id)?.name || $t('filters.projectFallback', { values: { pid: id } });
 	}
 	function resolvePriority(issue: Issue) {
 		if (!issue.priority || !metadata[issue.project]) return null;
@@ -33,7 +33,7 @@
 
 	function resolveType(issue: Issue) {
 		if (!issue.issue_type || !metadata[issue.project]) return null;
-		return metadata[issue.project].issue_types?.find((t) => t.id === issue.issue_type) || null;
+		return metadata[issue.project].issue_types?.find((typeItem) => typeItem.id === issue.issue_type) || null;
 	}
 
 	function handleRowClick(issueId: number) {

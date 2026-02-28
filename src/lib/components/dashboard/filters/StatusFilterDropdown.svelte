@@ -1,9 +1,11 @@
 <script lang="ts">
+	import { t } from 'svelte-i18n';
+	import { SvelteMap } from 'svelte/reactivity';
+	import type { IssueStatus, ProjectMetadata, Project } from '$lib/types';
+	import { getProjectColor, getProjectTagStyles } from '$lib/utils/projectColors';
 	import * as Popover from '$lib/components/ui/popover';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Search, Filter, GitMerge, Puzzle, Combine, Ban } from '@lucide/svelte';
-	import { t } from 'svelte-i18n';
-	import type { IssueStatus, ProjectMetadata, Project } from '$lib/types';
 
 	let {
 		metadata = {},
@@ -37,11 +39,6 @@
 		wasOpen = open;
 	});
 
-	function getProjectTagStyles(pName: string): string {
-		const color = getProjectColor(pName);
-		return `${color.replace('-500', '-500/10')} ${color.replace('bg-', 'text-').replace('-500', '-400')}`;
-	}
-
 	interface StatusWithProjects {
 		status: IssueStatus;
 		projectIds: number[];
@@ -49,12 +46,12 @@
 	}
 
 	let groupedStatuses = $derived.by(() => {
-		const statusMap = new Map<string, StatusWithProjects>();
+		const statusMap = new SvelteMap<string, StatusWithProjects>();
 
 		Object.entries(metadata).forEach(([pidStr, meta]) => {
 			const pid = parseInt(pidStr);
 			const project = projects.find((p) => p.id === pid);
-			const projectName = project?.name || `Project ${pid}`;
+			const projectName = project?.name || $t('filters.projectFallback', { values: { pid } });
 
 			meta.statuses.forEach((status) => {
 				const key = status.name.toLowerCase();
@@ -121,19 +118,6 @@
 
 	function handleClear() {
 		localSelectedIds = [];
-	}
-
-	function getProjectColor(projectName: string): string {
-		const colors = [
-			'bg-emerald-500',
-			'bg-purple-500',
-			'bg-blue-500',
-			'bg-orange-500',
-			'bg-pink-500',
-			'bg-cyan-500'
-		];
-		const hash = projectName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-		return colors[hash % colors.length];
 	}
 
 	let selectedCount = $derived(
