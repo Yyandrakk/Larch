@@ -15,6 +15,12 @@ pub struct FilterObject {
     pub assignee_exclude: Option<bool>,
     pub project_ids: Option<Vec<i64>>,
     pub project_exclude: Option<bool>,
+    pub priority_ids: Option<Vec<i64>>,
+    pub priority_exclude: Option<bool>,
+    pub severity_ids: Option<Vec<i64>>,
+    pub severity_exclude: Option<bool>,
+    pub type_ids: Option<Vec<i64>>,
+    pub type_exclude: Option<bool>,
 }
 
 #[tauri::command]
@@ -120,6 +126,54 @@ pub async fn get_aggregated_issues(
                         id.to_string()
                     }
                 })
+                .collect::<Vec<_>>()
+                .join(",");
+            query_params.push((key.to_string(), val));
+        }
+    }
+
+    if let Some(priority_ids) = filters.priority_ids {
+        if !priority_ids.is_empty() {
+            let key = if filters.priority_exclude.unwrap_or(false) {
+                "exclude_priority"
+            } else {
+                "priority"
+            };
+            let val = priority_ids
+                .iter()
+                .map(|id| id.to_string())
+                .collect::<Vec<_>>()
+                .join(",");
+            query_params.push((key.to_string(), val));
+        }
+    }
+
+    if let Some(severity_ids) = filters.severity_ids {
+        if !severity_ids.is_empty() {
+            let key = if filters.severity_exclude.unwrap_or(false) {
+                "exclude_severity"
+            } else {
+                "severity"
+            };
+            let val = severity_ids
+                .iter()
+                .map(|id| id.to_string())
+                .collect::<Vec<_>>()
+                .join(",");
+            query_params.push((key.to_string(), val));
+        }
+    }
+
+    if let Some(type_ids) = filters.type_ids {
+        if !type_ids.is_empty() {
+            let key = if filters.type_exclude.unwrap_or(false) {
+                "exclude_type"
+            } else {
+                "type"
+            };
+            let val = type_ids
+                .iter()
+                .map(|id| id.to_string())
                 .collect::<Vec<_>>()
                 .join(",");
             query_params.push((key.to_string(), val));
