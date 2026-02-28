@@ -401,6 +401,9 @@ mod tests {
             assigned_to: None,
             assigned_to_extra_info: None,
             modified_date: modified_date.map(String::from),
+            priority: None,
+            severity: None,
+            type_: None,
         }
     }
 
