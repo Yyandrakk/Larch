@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { invoke } from '@tauri-apps/api/core';
 	import {
 		CMD_GET_PROJECTS,
@@ -35,6 +36,10 @@
 	let searchQuery = $state('');
 	let currentUserId = $state<number | undefined>(undefined);
 	let userInteractedWithProjectFilter = $state(false);
+
+	let previousModifiedDates = $state<Map<number, string | null>>(new Map());
+	let changedIssueIds = $state(new SvelteSet<number>());
+	let isFirstLoad = $state(true);
 
 	let selectedIssueId = $state<number | null>(null);
 	let sheetOpen = $state(false);
@@ -109,6 +114,25 @@
 		return raw;
 	}
 
+	function snapshotIssues(targetIssues: Issue[]) {
+		const snapshot = new Map<number, string | null>();
+		targetIssues.forEach((issue) => {
+			snapshot.set(issue.id, issue.modified_date ?? null);
+		});
+		return snapshot;
+	}
+
+	function computeChangedIds(newIssues: Issue[]) {
+		const changed = new Set<number>();
+		newIssues.forEach((issue) => {
+			const prevDate = previousModifiedDates.get(issue.id);
+			if (prevDate === undefined || (issue.modified_date ?? null) !== prevDate) {
+				changed.add(issue.id);
+			}
+		});
+		return changed;
+	}
+
 	let isDirty = $derived(currentView ? !deepEqual(filters, currentViewFilter) : false);
 
 	let canSave = $derived(!!currentView && !isSystemView);
@@ -159,6 +183,8 @@
 			return;
 		}
 
+		changedIssueIds.clear();
+		isFirstLoad = true;
 		currentView = view;
 		try {
 			const rawFilters = JSON.parse(view.filter_data) as FilterObject;
@@ -307,7 +333,19 @@
 	async function refreshIssues() {
 		loading = true;
 		try {
-			issues = await invoke(CMD_GET_AGGREGATED_ISSUES, { filters });
+			const snapshot = snapshotIssues(issues);
+			const fetchedIssues: Issue[] = await invoke(CMD_GET_AGGREGATED_ISSUES, { filters });
+
+			if (isFirstLoad) {
+				previousModifiedDates = snapshotIssues(fetchedIssues);
+				isFirstLoad = false;
+			} else {
+				previousModifiedDates = snapshot;
+				const newChanged = computeChangedIds(fetchedIssues);
+				newChanged.forEach((id) => changedIssueIds.add(id));
+			}
+
+			issues = fetchedIssues;
 
 			if (filters.project_ids && filters.project_ids.length > 0) {
 				metadata = await invoke(CMD_GET_PROJECT_METADATA, { projectIds: filters.project_ids });
@@ -323,11 +361,14 @@
 	}
 
 	function handleFilterChange(newFilters: FilterObject) {
+		changedIssueIds.clear();
+		isFirstLoad = true;
 		filters = newFilters;
 		refreshIssues();
 	}
 
 	function handleIssueSelect(issueId: number) {
+		changedIssueIds.delete(issueId);
 		selectedIssueId = issueId;
 		sheetOpen = true;
 	}
@@ -449,7 +490,12 @@
 	</div>
 
 	<div class="flex-1 overflow-auto px-6 pb-6">
-		<IssueTable issues={filteredIssues} {projects} onIssueSelect={handleIssueSelect} />
+		<IssueTable
+			{changedIssueIds}
+			issues={filteredIssues}
+			{projects}
+			onIssueSelect={handleIssueSelect}
+		/>
 	</div>
 
 	<div

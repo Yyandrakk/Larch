@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SvelteSet } from 'svelte/reactivity';
 	import type { Issue, Project } from '$lib/types';
 	import { t } from 'svelte-i18n';
 	import { UserPlus, Clock } from '@lucide/svelte';
@@ -6,10 +7,12 @@
 	let {
 		issues = [],
 		projects = [],
+		changedIssueIds = new SvelteSet<number>(),
 		onIssueSelect
 	}: {
 		issues: Issue[];
 		projects: Project[];
+		changedIssueIds?: SvelteSet<number>;
 		onIssueSelect?: (issueId: number) => void;
 	} = $props();
 
@@ -106,7 +109,17 @@
 					}}
 				>
 					<td class="px-2 py-2.5 font-mono text-xs text-[#93a9c8]">
-						#{issue.id}
+						<div class="flex items-center gap-2">
+							{#if changedIssueIds.has(issue.id)}
+								<div
+									class="size-2 rounded-full bg-[#196ee6]"
+									title={$t('table.changedIndicator')}
+								></div>
+							{:else}
+								<div class="size-2"></div>
+							{/if}
+							<span>#{issue.id}</span>
+						</div>
 					</td>
 					<td
 						class="px-2 py-2.5 font-medium text-white transition-colors group-hover:text-[#196ee6]"

@@ -231,7 +231,6 @@
 											</Avatar.Fallback>
 										</Avatar.Root>
 										<span>{member.full_name}</span>
-										<span class="text-muted-foreground text-xs">({member.role_name})</span>
 									</div>
 								</Select.Item>
 							{/if}

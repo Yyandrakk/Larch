@@ -23,7 +23,10 @@
 		AlertTriangle,
 		Loader2,
 		Check,
-		ChevronsUpDown
+		ChevronsUpDown,
+		UserCheck,
+		UserX,
+		UserPlus
 	} from '@lucide/svelte';
 	import { t } from 'svelte-i18n';
 	import { cn } from '$lib/utils';
@@ -33,6 +36,7 @@
 	import LabelManager from './LabelManager.svelte';
 	import AttachmentManager from './AttachmentManager.svelte';
 	import ActivityLog from './ActivityLog.svelte';
+	import { getCurrentUser } from '$lib/stores/user.svelte';
 
 	let {
 		issue,
@@ -132,6 +136,23 @@
 
 	let canEditStatus = $derived(statuses.length > 0 && onStatusChange !== undefined);
 	let canEditAssignee = $derived(members.length > 0 && onAssigneeChange !== undefined);
+
+	let currentUser = $derived(getCurrentUser());
+	let showAssignToMe = $derived(
+		canEditAssignee &&
+			currentUser &&
+			currentUser.id !== issue.assigned_to_id &&
+			members.some((m) => m.user_id === currentUser!.id)
+	);
+	let showUnassign = $derived(canEditAssignee && issue.assigned_to_id != null);
+	let showAssignToReporter = $derived(
+		canEditAssignee &&
+			issue.owner_id != null &&
+			issue.owner_id !== issue.assigned_to_id &&
+			(!currentUser || issue.owner_id !== currentUser.id) &&
+			members.some((m) => m.user_id === issue.owner_id)
+	);
+	let reporterMember = $derived(members.find((m) => m.user_id === issue.owner_id));
 </script>
 
 <div class="flex h-full flex-col overflow-y-auto">
@@ -230,6 +251,60 @@
 								<Command.Input placeholder={$t('filters.searchPeople') || 'Search people...'} />
 								<Command.List>
 									<Command.Empty>{$t('filters.noResults') || 'No results found.'}</Command.Empty>
+									{#if showAssignToMe || showUnassign || showAssignToReporter}
+										<Command.Group heading={$t('issueDetail.quickActions') || 'Quick actions'}>
+											{#if showAssignToMe}
+												<Command.Item
+													value="__assign_to_me"
+													onSelect={() => {
+														if (onAssigneeChange && currentUser) {
+															onAssigneeChange(currentUser.id);
+														}
+														closeAssigneePopoverAndFocus();
+													}}
+												>
+													<UserCheck class="mr-2 h-4 w-4" />
+													<span>{$t('issueDetail.assignToMe') || 'Assign to me'}</span>
+												</Command.Item>
+											{/if}
+											{#if showUnassign}
+												<Command.Item
+													value="__unassign"
+													onSelect={() => {
+														if (onAssigneeChange) {
+															onAssigneeChange(null);
+														}
+														closeAssigneePopoverAndFocus();
+													}}
+												>
+													<UserX class="mr-2 h-4 w-4" />
+													<span class="text-muted-foreground italic"
+														>{$t('issueDetail.unassigned') || 'Unassigned'}</span
+													>
+												</Command.Item>
+											{/if}
+											{#if showAssignToReporter}
+												<Command.Item
+													value="__assign_to_reporter"
+													onSelect={() => {
+														if (onAssigneeChange && issue.owner_id) {
+															onAssigneeChange(issue.owner_id);
+														}
+														closeAssigneePopoverAndFocus();
+													}}
+												>
+													<UserPlus class="mr-2 h-4 w-4" />
+													<span>{$t('issueDetail.assignToReporter') || 'Assign to reporter'}</span>
+													{#if reporterMember}
+														<span class="text-muted-foreground text-xs"
+															>({reporterMember.full_name})</span
+														>
+													{/if}
+												</Command.Item>
+											{/if}
+										</Command.Group>
+										<Command.Separator />
+									{/if}
 									<Command.Group>
 										<Command.Item
 											value="unassigned"
@@ -277,7 +352,6 @@
 															</Avatar.Fallback>
 														</Avatar.Root>
 														<span>{member.full_name}</span>
-														<span class="text-muted-foreground text-xs">({member.role_name})</span>
 													</div>
 												</Command.Item>
 											{/if}

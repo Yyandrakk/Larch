@@ -95,7 +95,8 @@
 		"status": "Status",
 		"project": "Project",
 		"assignedTo": "Assignee",
-		"unassigned": "Unassigned"
+		"unassigned": "Unassigned",
+		"changedIndicator": "Modified since last refresh"
 	},
 	"filters": {
 		"filter": "Filter",
@@ -198,6 +199,9 @@
 		"descriptionUpdateError": "Failed to update description",
 		"assigneeUpdated": "Assignee updated successfully",
 		"assigneeUpdateError": "Failed to update assignee",
+		"assignToMe": "Assign to me",
+		"assignToReporter": "Assign to reporter",
+		"quickActions": "Quick actions",
 		"draftSaved": "Draft saved",
 		"discardDraft": "Discard draft",
 		"saved": "Saved",
