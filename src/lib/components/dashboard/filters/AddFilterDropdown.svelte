@@ -11,7 +11,13 @@
 		onSelectAssignee,
 		hasProjectFilter = false,
 		hasStatusFilter = false,
-		hasAssigneeFilter = false
+		hasAssigneeFilter = false,
+		hasPriorityFilter = false,
+		hasSeverityFilter = false,
+		hasTypeFilter = false,
+		onSelectPriority,
+		onSelectSeverity,
+		onSelectType
 	}: {
 		open?: boolean;
 		buttonRef?: HTMLElement | null;
@@ -21,6 +27,12 @@
 		hasProjectFilter?: boolean;
 		hasStatusFilter?: boolean;
 		hasAssigneeFilter?: boolean;
+		hasPriorityFilter?: boolean;
+		hasSeverityFilter?: boolean;
+		hasTypeFilter?: boolean;
+		onSelectPriority?: () => void;
+		onSelectSeverity?: () => void;
+		onSelectType?: () => void;
 	} = $props();
 
 	function handleSelect(type: 'project' | 'status' | 'assignee') {
