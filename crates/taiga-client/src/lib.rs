@@ -5,6 +5,8 @@ use url::Url;
 pub mod errors;
 pub mod models;
 pub mod prelude;
+#[cfg(test)]
+mod tests;
 
 use errors::TaigaClientError;
 use models::{
@@ -25,6 +27,22 @@ impl TaigaClient {
         Self {
             client: reqwest::Client::new(),
             api_base_url,
+        }
+    }
+
+    pub fn is_managed_url(&self, url: &str) -> bool {
+        if let Ok(parsed_url) = Url::parse(url) {
+            match (parsed_url.host_str(), self.api_base_url.host_str()) {
+                (Some(target_host), Some(api_host)) => {
+                    let target_lower = target_host.to_lowercase();
+                    let api_lower = api_host.to_lowercase();
+                    target_lower == api_lower
+                        || target_lower.ends_with(&format!(".{}", api_lower))
+                }
+                _ => false,
+            }
+        } else {
+            false
         }
     }
 
@@ -607,22 +625,8 @@ impl TaigaClient {
         let mut req = self.client.get(url);
 
         // Safety check: Only attach token if the request URL matches our API host
-        let should_attach_token = if let Ok(parsed_url) = Url::parse(url) {
-            match (parsed_url.host_str(), self.api_base_url.host_str()) {
-                (Some(target_host), Some(api_host)) => {
-                    let target_lower = target_host.to_lowercase();
-                    let api_lower = api_host.to_lowercase();
-                    target_lower == api_lower
-                        || target_lower.ends_with(&format!(".{}", api_lower))
-                }
-                _ => false,
-            }
-        } else {
-            false
-        };
-
         if let Some(t) = token {
-            if should_attach_token {
+            if self.is_managed_url(url) {
                 req = req.bearer_auth(t.expose_secret());
             }
         }
