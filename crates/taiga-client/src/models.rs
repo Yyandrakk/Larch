@@ -130,6 +130,12 @@ pub struct IssueDto {
     pub assigned_to: Option<i64>,
     pub assigned_to_extra_info: Option<UserExtraInfo>,
     pub modified_date: Option<String>,
+    #[serde(default)]
+    pub priority: Option<i64>,
+    #[serde(default)]
+    pub severity: Option<i64>,
+    #[serde(rename = "type", default)]
+    pub type_: Option<i64>,
 }
 
 // ============================================================================
