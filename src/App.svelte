@@ -9,6 +9,7 @@
 	import DashboardScreen from '$lib/screens/DashboardScreen.svelte';
 	import { AppShell } from '$lib/components/layout';
 	import { Toaster, toast } from 'svelte-sonner';
+	import { TooltipProvider } from '$lib/components/ui/tooltip';
 	import { CMD_FORCE_CLOSE_APP, CMD_GET_ME, CMD_GET_TAIGA_API_URL } from '$lib/commands.svelte';
 	import { hasPendingCommit, tryCommitPending } from '$lib/stores/pendingClose';
 	import { setCurrentUser, clearCurrentUser } from '$lib/stores/user.svelte';
@@ -100,34 +101,36 @@
 
 <Toaster />
 
-{#if $isLoading || isCheckingAuth}
-	<main class="flex min-h-screen items-center justify-center bg-[#111821] p-4 select-none">
-		<p class="text-white">Loading...</p>
-	</main>
-{:else if currentScreen === 'login'}
-	<main
-		class="bg-background-dark relative flex min-h-screen items-center justify-center text-white"
-	>
-		<div class="pointer-events-none fixed inset-0 z-0">
-			<div
-				class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-[#111821] to-[#111821]"
-			></div>
-			<div
-				class="absolute top-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent"
-			></div>
-		</div>
-		<LoginScreen onLoginSuccess={handleLoginSuccess} />
-	</main>
-{:else}
-	<AppShell
-		currentScreen={currentScreen as 'projects' | 'dashboard'}
-		onNavigate={handleNavigate}
-		onLogout={handleLogout}
-	>
-		{#if currentScreen === 'projects'}
-			<ProjectConfigurationScreen onContinue={handleConfigContinue} />
-		{:else if currentScreen === 'dashboard'}
-			<DashboardScreen />
-		{/if}
-	</AppShell>
-{/if}
+<TooltipProvider>
+	{#if $isLoading || isCheckingAuth}
+		<main class="flex min-h-screen items-center justify-center bg-[#111821] p-4 select-none">
+			<p class="text-white">Loading...</p>
+		</main>
+	{:else if currentScreen === 'login'}
+		<main
+			class="bg-background-dark relative flex min-h-screen items-center justify-center text-white"
+		>
+			<div class="pointer-events-none fixed inset-0 z-0">
+				<div
+					class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-[#111821] to-[#111821]"
+				></div>
+				<div
+					class="absolute top-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent"
+				></div>
+			</div>
+			<LoginScreen onLoginSuccess={handleLoginSuccess} />
+		</main>
+	{:else}
+		<AppShell
+			currentScreen={currentScreen as 'projects' | 'dashboard'}
+			onNavigate={handleNavigate}
+			onLogout={handleLogout}
+		>
+			{#if currentScreen === 'projects'}
+				<ProjectConfigurationScreen onContinue={handleConfigContinue} />
+			{:else if currentScreen === 'dashboard'}
+				<DashboardScreen />
+			{/if}
+		</AppShell>
+	{/if}
+</TooltipProvider>
