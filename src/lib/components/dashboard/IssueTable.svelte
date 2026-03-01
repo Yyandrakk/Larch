@@ -1,23 +1,39 @@
 <script lang="ts">
 	import { SvelteSet } from 'svelte/reactivity';
-	import type { Issue, Project } from '$lib/types';
+	import type { Issue, Project, ProjectMetadata } from '$lib/types';
 	import { t } from 'svelte-i18n';
 	import { UserPlus, Clock } from '@lucide/svelte';
 
 	let {
 		issues = [],
 		projects = [],
+		metadata = {},
 		changedIssueIds = new SvelteSet<number>(),
 		onIssueSelect
 	}: {
 		issues: Issue[];
 		projects: Project[];
+		metadata?: Record<number, ProjectMetadata>;
 		changedIssueIds?: SvelteSet<number>;
 		onIssueSelect?: (issueId: number) => void;
 	} = $props();
 
 	function getProjectName(id: number): string {
-		return projects.find((p: Project) => p.id === id)?.name || `Project ${id}`;
+		return projects.find((p: Project) => p.id === id)?.name || $t('filters.projectFallback', { values: { pid: id } });
+	}
+	function resolvePriority(issue: Issue) {
+		if (!issue.priority || !metadata[issue.project]) return null;
+		return metadata[issue.project].priorities?.find((p) => p.id === issue.priority) || null;
+	}
+
+	function resolveSeverity(issue: Issue) {
+		if (!issue.severity || !metadata[issue.project]) return null;
+		return metadata[issue.project].severities?.find((s) => s.id === issue.severity) || null;
+	}
+
+	function resolveType(issue: Issue) {
+		if (!issue.issue_type || !metadata[issue.project]) return null;
+		return metadata[issue.project].issue_types?.find((typeItem) => typeItem.id === issue.issue_type) || null;
 	}
 
 	function handleRowClick(issueId: number) {
@@ -73,6 +89,16 @@
 			<th
 				class="border-b border-[#243347] px-2 py-3 text-xs font-semibold tracking-wider text-[#93a9c8] uppercase"
 			>
+				{$t('table.prioritySeverity')}
+			</th>
+			<th
+				class="border-b border-[#243347] px-2 py-3 text-xs font-semibold tracking-wider text-[#93a9c8] uppercase"
+			>
+				{$t('table.type')}
+			</th>
+			<th
+				class="border-b border-[#243347] px-2 py-3 text-xs font-semibold tracking-wider text-[#93a9c8] uppercase"
+			>
 				{$t('table.project')}
 			</th>
 			<th
@@ -90,12 +116,15 @@
 	<tbody class="text-sm">
 		{#if issues.length === 0}
 			<tr>
-				<td colspan="6" class="h-24 text-center text-[#93a9c8]">
+				<td colspan="8" class="h-24 text-center text-[#93a9c8]">
 					{$t('dashboard.noIssues')}
 				</td>
 			</tr>
 		{:else}
 			{#each issues as issue (issue.id)}
+				{@const priority = resolvePriority(issue)}
+				{@const severity = resolveSeverity(issue)}
+				{@const type = resolveType(issue)}
 				<tr
 					class="table-row-hover group cursor-pointer border-b border-[#243347]/50 transition-colors"
 					role="button"
@@ -137,6 +166,43 @@
 								{issue.status_name || issue.status}
 							</span>
 						</div>
+					</td>
+					<td class="px-2 py-2.5">
+						<div class="flex flex-col gap-1">
+							{#if priority}
+								<div class="flex items-center gap-1.5 text-xs">
+									<span class="size-1.5 rounded-full" style="background-color: {priority.color};"
+									></span>
+									<span class="text-[#93a9c8]">{priority.name}</span>
+								</div>
+							{:else}
+								<span class="text-xs text-[#93a9c8]/50">—</span>
+							{/if}
+							{#if severity}
+								<div class="flex items-center gap-1.5 text-xs">
+									<span class="size-1.5 rounded-full" style="background-color: {severity.color};"
+									></span>
+									<span class="text-[#93a9c8]">{severity.name}</span>
+								</div>
+							{:else}
+								<span class="text-xs text-[#93a9c8]/50">—</span>
+							{/if}
+						</div>
+					</td>
+					<td class="px-2 py-2.5">
+						{#if type}
+							<div
+								class="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5"
+								style="border-color: {type.color}20; background-color: {type.color}10;"
+							>
+								<span class="size-1.5 rounded-full" style="background-color: {type.color};"></span>
+								<span class="text-xs font-medium" style="color: {type.color};">
+									{type.name}
+								</span>
+							</div>
+						{:else}
+							<span class="text-xs text-[#93a9c8]/50">—</span>
+						{/if}
 					</td>
 					<td class="px-2 py-2.5">
 						<div class="flex items-center gap-1.5">

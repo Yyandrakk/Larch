@@ -17,6 +17,18 @@ struct FilterData {
     project_ids: Option<Vec<i64>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     project_exclude: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    priority_ids: Option<Vec<i64>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    priority_exclude: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    severity_ids: Option<Vec<i64>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    severity_exclude: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    type_ids: Option<Vec<i64>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    type_exclude: Option<bool>,
 }
 
 pub async fn sanitize_all_views<R: Repository>(

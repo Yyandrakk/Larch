@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { X, Folder, CircleDot, User } from '@lucide/svelte';
 	import { t } from 'svelte-i18n';
+	import { SvelteSet } from 'svelte/reactivity';
 	import type { Project, FilterObject, ProjectMetadata } from '$lib/types';
 	import * as Popover from '$lib/components/ui/popover';
+	import { X, Folder, CircleDot, User, Flag, AlertTriangle, Tag } from '@lucide/svelte';
 
 	import FilterChip from './filters/FilterChip.svelte';
 	import AddFilterDropdown from './filters/AddFilterDropdown.svelte';
@@ -10,6 +11,9 @@
 	import ProjectFilterContent from './filters/ProjectFilterDropdown.svelte';
 	import StatusFilterContent from './filters/StatusFilterDropdown.svelte';
 	import AssigneeFilterContent from './filters/AssigneeFilterDropdown.svelte';
+	import PriorityFilterContent from './filters/PriorityFilterDropdown.svelte';
+	import SeverityFilterContent from './filters/SeverityFilterDropdown.svelte';
+	import TypeFilterContent from './filters/TypeFilterDropdown.svelte';
 
 	let {
 		projects = [],
@@ -43,21 +47,34 @@
 	let projectDropdownOpen = $state(false);
 	let statusDropdownOpen = $state(false);
 	let assigneeDropdownOpen = $state(false);
+	let priorityDropdownOpen = $state(false);
+	let severityDropdownOpen = $state(false);
+	let typeDropdownOpen = $state(false);
 
 	// Ref for AddFilterDropdown button to use as anchor for filter popovers
 	let addFilterButtonRef = $state<HTMLElement | null>(null);
 
 	// Track which popover was opened from AddFilterDropdown
-	let openedFromAddFilter = $state<'project' | 'status' | 'assignee' | null>(null);
+	let openedFromAddFilter = $state<
+		'project' | 'status' | 'assignee' | 'priority' | 'severity' | 'type' | null
+	>(null);
 
 	let hasProjectFilter = $derived(
 		userInteractedWithProjectFilter && filters.project_ids && filters.project_ids.length > 0
 	);
 	let hasStatusFilter = $derived(filters.status_ids && filters.status_ids.length > 0);
 	let hasAssigneeFilter = $derived(filters.assignee_ids && filters.assignee_ids.length > 0);
+	let hasPriorityFilter = $derived(filters.priority_ids && filters.priority_ids.length > 0);
+	let hasSeverityFilter = $derived(filters.severity_ids && filters.severity_ids.length > 0);
+	let hasTypeFilter = $derived(filters.type_ids && filters.type_ids.length > 0);
 
 	let activeFilterCount = $derived(
-		(hasProjectFilter ? 1 : 0) + (hasStatusFilter ? 1 : 0) + (hasAssigneeFilter ? 1 : 0)
+		(hasProjectFilter ? 1 : 0) +
+			(hasStatusFilter ? 1 : 0) +
+			(hasAssigneeFilter ? 1 : 0) +
+			(hasPriorityFilter ? 1 : 0) +
+			(hasSeverityFilter ? 1 : 0) +
+			(hasTypeFilter ? 1 : 0)
 	);
 
 	function getProjectChipValue(): string {
@@ -71,7 +88,7 @@
 
 	function getStatusChipValue(): string {
 		if (!filters.status_ids) return '';
-		const statusNames = new Set<string>();
+		const statusNames = new SvelteSet<string>();
 		filters.status_ids.forEach((sid) => {
 			Object.values(metadata).forEach((meta) => {
 				const status = meta.statuses.find((s) => s.id === sid);
@@ -192,9 +209,130 @@
 		assigneeDropdownOpen = true;
 	}
 
+	function getPriorityChipValue(): string {
+		if (!filters.priority_ids) return '';
+		const priorityNames = new SvelteSet<string>();
+		filters.priority_ids.forEach((pid) => {
+			Object.values(metadata).forEach((meta) => {
+				const priority = meta.priorities.find((p) => p.id === pid);
+				if (priority) priorityNames.add(priority.name);
+			});
+		});
+		if (priorityNames.size === 1) {
+			return Array.from(priorityNames)[0];
+		}
+		return $t('filters.multiple');
+	}
+
+	function getSeverityChipValue(): string {
+		if (!filters.severity_ids) return '';
+		const severityNames = new SvelteSet<string>();
+		filters.severity_ids.forEach((sid) => {
+			Object.values(metadata).forEach((meta) => {
+				const severity = meta.severities.find((s) => s.id === sid);
+				if (severity) severityNames.add(severity.name);
+			});
+		});
+		if (severityNames.size === 1) {
+			return Array.from(severityNames)[0];
+		}
+		return $t('filters.multiple');
+	}
+
+	function getTypeChipValue(): string {
+		if (!filters.type_ids) return '';
+		const typeNames = new SvelteSet<string>();
+		filters.type_ids.forEach((tid) => {
+			Object.values(metadata).forEach((meta) => {
+				const typeItem = meta.issue_types.find((it) => it.id === tid);
+				if (typeItem) typeNames.add(typeItem.name);
+			});
+		});
+		if (typeNames.size === 1) {
+			return Array.from(typeNames)[0];
+		}
+		return $t('filters.multiple');
+	}
+
+	function handlePriorityApply(ids: number[], exclude: boolean) {
+		priorityDropdownOpen = false;
+		onApply({
+			...filters,
+			priority_ids: ids.length > 0 ? ids : undefined,
+			priority_exclude: exclude
+		});
+	}
+
+	function handleSeverityApply(ids: number[], exclude: boolean) {
+		severityDropdownOpen = false;
+		onApply({
+			...filters,
+			severity_ids: ids.length > 0 ? ids : undefined,
+			severity_exclude: exclude
+		});
+	}
+
+	function handleTypeApply(ids: number[], exclude: boolean) {
+		typeDropdownOpen = false;
+		onApply({
+			...filters,
+			type_ids: ids.length > 0 ? ids : undefined,
+			type_exclude: exclude
+		});
+	}
+
+	function removePriorityFilter() {
+		onApply({
+			...filters,
+			priority_ids: undefined,
+			priority_exclude: false
+		});
+	}
+
+	function removeSeverityFilter() {
+		onApply({
+			...filters,
+			severity_ids: undefined,
+			severity_exclude: false
+		});
+	}
+
+	function removeTypeFilter() {
+		onApply({
+			...filters,
+			type_ids: undefined,
+			type_exclude: false
+		});
+	}
+
+	function handleSelectPriority() {
+		addFilterOpen = false;
+		openedFromAddFilter = 'priority';
+		priorityDropdownOpen = true;
+	}
+
+	function handleSelectSeverity() {
+		addFilterOpen = false;
+		openedFromAddFilter = 'severity';
+		severityDropdownOpen = true;
+	}
+
+	function handleSelectType() {
+		addFilterOpen = false;
+		openedFromAddFilter = 'type';
+		typeDropdownOpen = true;
+	}
+
 	// Clear openedFromAddFilter when popovers close
 	$effect(() => {
-		if (!projectDropdownOpen && !statusDropdownOpen && !assigneeDropdownOpen) {
+		if (
+			!projectDropdownOpen &&
+			!statusDropdownOpen &&
+			!assigneeDropdownOpen &&
+			!priorityDropdownOpen &&
+			!severityDropdownOpen &&
+			!typeDropdownOpen
+		) {
 			openedFromAddFilter = null;
 		}
 	});
@@ -293,15 +431,112 @@
 		/>
 	</Popover.Root>
 
+	<Popover.Root bind:open={priorityDropdownOpen}>
+		<Popover.Trigger>
+			{#snippet child({ props })}
+				{#if hasPriorityFilter}
+					<div {...props}>
+						<FilterChip
+							label={$t('filters.priority')}
+							value={getPriorityChipValue()}
+							isExclude={filters.priority_exclude ?? false}
+							icon={Flag}
+							onRemove={removePriorityFilter}
+						/>
+					</div>
+				{:else}
+					<span {...props} class="hidden"></span>
+				{/if}
+			{/snippet}
+		</Popover.Trigger>
+		<PriorityFilterContent
+			{metadata}
+			{projects}
+			selectedIds={filters.priority_ids || []}
+			isExclude={filters.priority_exclude ?? false}
+			open={priorityDropdownOpen}
+			onApply={handlePriorityApply}
+			customAnchor={!hasPriorityFilter && openedFromAddFilter === 'priority'
+				? addFilterButtonRef
+				: null}
+		/>
+	</Popover.Root>
+
+	<Popover.Root bind:open={severityDropdownOpen}>
+		<Popover.Trigger>
+			{#snippet child({ props })}
+				{#if hasSeverityFilter}
+					<div {...props}>
+						<FilterChip
+							label={$t('filters.severity')}
+							value={getSeverityChipValue()}
+							isExclude={filters.severity_exclude ?? false}
+							icon={AlertTriangle}
+							onRemove={removeSeverityFilter}
+						/>
+					</div>
+				{:else}
+					<span {...props} class="hidden"></span>
+				{/if}
+			{/snippet}
+		</Popover.Trigger>
+		<SeverityFilterContent
+			{metadata}
+			{projects}
+			selectedIds={filters.severity_ids || []}
+			isExclude={filters.severity_exclude ?? false}
+			open={severityDropdownOpen}
+			onApply={handleSeverityApply}
+			customAnchor={!hasSeverityFilter && openedFromAddFilter === 'severity'
+				? addFilterButtonRef
+				: null}
+		/>
+	</Popover.Root>
+
+	<Popover.Root bind:open={typeDropdownOpen}>
+		<Popover.Trigger>
+			{#snippet child({ props })}
+				{#if hasTypeFilter}
+					<div {...props}>
+						<FilterChip
+							label={$t('filters.type')}
+							value={getTypeChipValue()}
+							isExclude={filters.type_exclude ?? false}
+							icon={Tag}
+							onRemove={removeTypeFilter}
+						/>
+					</div>
+				{:else}
+					<span {...props} class="hidden"></span>
+				{/if}
+			{/snippet}
+		</Popover.Trigger>
+		<TypeFilterContent
+			{metadata}
+			{projects}
+			selectedIds={filters.type_ids || []}
+			isExclude={filters.type_exclude ?? false}
+			open={typeDropdownOpen}
+			onApply={handleTypeApply}
+			customAnchor={!hasTypeFilter && openedFromAddFilter === 'type' ? addFilterButtonRef : null}
+		/>
+	</Popover.Root>
+
 	<AddFilterDropdown
 		bind:open={addFilterOpen}
 		bind:buttonRef={addFilterButtonRef}
 		{hasProjectFilter}
 		{hasStatusFilter}
 		{hasAssigneeFilter}
+		{hasPriorityFilter}
+		{hasSeverityFilter}
+		{hasTypeFilter}
 		onSelectProject={handleSelectProject}
 		onSelectStatus={handleSelectStatus}
 		onSelectAssignee={handleSelectAssignee}
+		onSelectPriority={handleSelectPriority}
+		onSelectSeverity={handleSelectSeverity}
+		onSelectType={handleSelectType}
 	/>
 
 	<div class="ml-auto flex items-center gap-2">

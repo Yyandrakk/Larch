@@ -113,9 +113,11 @@ impl From<sea_orm::DbErr> for Error {
 ### TypeScript/Svelte
 
 - **Svelte 5 Runes**: Use `$state`, `$derived`, `$effect`, `$props`, `$bindable`
+- **Reactive Collections**: Use `SvelteMap`/`SvelteSet` (from `svelte/reactivity`) inside `$derived.by()` blocks, never plain `Map`/`Set`
 - **Never use**: Legacy Svelte 4 stores (`writable`, `derived` from svelte/store)
 - **DOM Timing**: Use `await tick()` from `'svelte'`, never `setTimeout(..., 0)`
-- **Variable Shadowing**: Never shadow props or outer variables inside functions
+- **Variable Shadowing**: Never shadow props or outer variables inside functions. Especially: never use `t` as a callback parameter in files that import `t` from `svelte-i18n` (use `it`, `tp`, `typeItem`, etc. instead)
+- **Localized Fallbacks**: All user-facing fallback strings must use `$t()`, never hardcoded English (e.g., use `$t('filters.projectFallback', { values: { pid } })` instead of `` `Project ${pid}` ``)
 - **Formatting**: Prettier with tabs, single quotes, no trailing commas
 
 ```svelte
@@ -174,23 +176,26 @@ use tauri::State;
 ### TypeScript/Svelte Import Order
 
 ```typescript
-// 1. Svelte imports
-import { onMount } from 'svelte';
+// 1. Svelte ecosystem (i18n, reactivity)
+import { t } from 'svelte-i18n';
+import { SvelteMap } from 'svelte/reactivity';
+
+// 2. Tauri API
 import { invoke } from '@tauri-apps/api/core';
 
-// 2. Internal lib imports (use $lib alias)
+// 3. Internal lib imports (use $lib alias)
 import { CMD_GET_PROJECTS } from '$lib/commands.svelte';
 import type { Project } from '$lib/types';
+import { getProjectColor, getProjectTagStyles } from '$lib/utils/projectColors';
 import IssueTable from '$lib/components/dashboard/IssueTable.svelte';
 
-// 3. UI components
+// 4. UI components
 import { Button } from '$lib/components/ui/button';
 import { Input } from '$lib/components/ui/input';
 
-// 4. Icons and external
+// 5. Icons and external
 import { RefreshCw, Search } from '@lucide/svelte';
 import { toast } from 'svelte-sonner';
-import { t } from 'svelte-i18n';
 ```
 
 ---

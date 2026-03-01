@@ -10,6 +10,9 @@ export interface Issue {
 	assigned_to_name?: string;
 	assigned_to_photo?: string;
 	modified_date?: string;
+	priority?: number;
+	severity?: number;
+	issue_type?: number;
 }
 
 export interface User {
@@ -91,6 +94,12 @@ export interface FilterObject {
 	project_exclude?: boolean;
 	status_exclude?: boolean;
 	assignee_exclude?: boolean;
+	priority_ids?: number[];
+	priority_exclude?: boolean;
+	severity_ids?: number[];
+	severity_exclude?: boolean;
+	type_ids?: number[];
+	type_exclude?: boolean;
 }
 
 export interface SavedView {

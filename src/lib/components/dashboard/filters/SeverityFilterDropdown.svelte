@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { t } from 'svelte-i18n';
 	import { SvelteMap } from 'svelte/reactivity';
-	import type { IssueStatus, ProjectMetadata, Project } from '$lib/types';
+	import type { Severity, ProjectMetadata, Project } from '$lib/types';
 	import { getProjectColor, getProjectTagStyles } from '$lib/utils/projectColors';
 	import * as Popover from '$lib/components/ui/popover';
 	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { Search, Filter, GitMerge, Puzzle, Combine, Ban } from '@lucide/svelte';
+	import { Search, AlertTriangle, GitMerge, Puzzle, Combine, Ban } from '@lucide/svelte';
 
 	let {
 		metadata = {},
@@ -39,29 +39,29 @@
 		wasOpen = open;
 	});
 
-	interface StatusWithProjects {
-		status: IssueStatus;
+	interface SeverityWithProjects {
+		severity: Severity;
 		projectIds: number[];
 		projectNames: string[];
 	}
 
-	let groupedStatuses = $derived.by(() => {
-		const statusMap = new SvelteMap<string, StatusWithProjects>();
+	let groupedSeverities = $derived.by(() => {
+		const severityMap = new SvelteMap<string, SeverityWithProjects>();
 
 		Object.entries(metadata).forEach(([pidStr, meta]) => {
 			const pid = parseInt(pidStr);
 			const project = projects.find((p) => p.id === pid);
 			const projectName = project?.name || $t('filters.projectFallback', { values: { pid } });
 
-			meta.statuses.forEach((status) => {
-				const key = status.name.toLowerCase();
-				if (statusMap.has(key)) {
-					const existing = statusMap.get(key)!;
+			meta.severities?.forEach((severity) => {
+				const key = severity.name.toLowerCase();
+				if (severityMap.has(key)) {
+					const existing = severityMap.get(key)!;
 					existing.projectIds.push(pid);
 					existing.projectNames.push(projectName);
 				} else {
-					statusMap.set(key, {
-						status: { ...status, color: '#6b7280' },
+					severityMap.set(key, {
+						severity: { ...severity },
 						projectIds: [pid],
 						projectNames: [projectName]
 					});
@@ -69,26 +69,26 @@
 			});
 		});
 
-		return Array.from(statusMap.values());
+		return Array.from(severityMap.values());
 	});
 
-	let unifiedStatuses = $derived(
-		groupedStatuses
+	let unifiedSeverities = $derived(
+		groupedSeverities
 			.filter((s) => s.projectIds.length > 1)
-			.filter((s) => s.status.name.toLowerCase().includes(searchQuery.toLowerCase()))
+			.filter((s) => s.severity.name.toLowerCase().includes(searchQuery.toLowerCase()))
 	);
 
-	let projectSpecificStatuses = $derived(
-		groupedStatuses
+	let projectSpecificSeverities = $derived(
+		groupedSeverities
 			.filter((s) => s.projectIds.length === 1)
-			.filter((s) => s.status.name.toLowerCase().includes(searchQuery.toLowerCase()))
+			.filter((s) => s.severity.name.toLowerCase().includes(searchQuery.toLowerCase()))
 	);
 
-	function getStatusIdsByName(statusName: string): number[] {
+	function getSeverityIdsByName(severityName: string): number[] {
 		const ids: number[] = [];
 		Object.values(metadata).forEach((meta) => {
-			meta.statuses.forEach((s) => {
-				if (s.name.toLowerCase() === statusName.toLowerCase()) {
+			meta.severities?.forEach((s) => {
+				if (s.name.toLowerCase() === severityName.toLowerCase()) {
 					ids.push(s.id);
 				}
 			});
@@ -96,13 +96,13 @@
 		return ids;
 	}
 
-	function isStatusSelected(statusName: string): boolean {
-		const ids = getStatusIdsByName(statusName);
+	function isSeveritySelected(severityName: string): boolean {
+		const ids = getSeverityIdsByName(severityName);
 		return ids.some((id) => localSelectedIds.includes(id));
 	}
 
-	function toggleStatus(statusName: string) {
-		const ids = getStatusIdsByName(statusName);
+	function toggleSeverity(severityName: string) {
+		const ids = getSeverityIdsByName(severityName);
 		const anySelected = ids.some((id) => localSelectedIds.includes(id));
 
 		if (anySelected) {
@@ -121,34 +121,34 @@
 	}
 
 	let selectedCount = $derived(
-		groupedStatuses.filter((s) => isStatusSelected(s.status.name)).length
+		groupedSeverities.filter((s) => isSeveritySelected(s.severity.name)).length
 	);
 
-	let allVisibleStatuses = $derived([...unifiedStatuses, ...projectSpecificStatuses]);
+	let allVisibleSeverities = $derived([...unifiedSeverities, ...projectSpecificSeverities]);
 
-	function getAllVisibleStatusIds() {
+	function getAllVisibleSeverityIds() {
 		const ids: number[] = [];
-		allVisibleStatuses.forEach((s) => {
-			ids.push(...getStatusIdsByName(s.status.name));
+		allVisibleSeverities.forEach((s) => {
+			ids.push(...getSeverityIdsByName(s.severity.name));
 		});
 		return ids;
 	}
 
 	let areAllVisibleSelected = $derived.by(() => {
-		if (allVisibleStatuses.length === 0) return false;
-		return allVisibleStatuses.every((s) => isStatusSelected(s.status.name));
+		if (allVisibleSeverities.length === 0) return false;
+		return allVisibleSeverities.every((s) => isSeveritySelected(s.severity.name));
 	});
 
 	let isAnyVisibleSelected = $derived.by(() => {
-		if (allVisibleStatuses.length === 0) return false;
-		return allVisibleStatuses.some((s) => isStatusSelected(s.status.name));
+		if (allVisibleSeverities.length === 0) return false;
+		return allVisibleSeverities.some((s) => isSeveritySelected(s.severity.name));
 	});
 
 	let masterChecked = $derived(areAllVisibleSelected);
 	let masterIndeterminate = $derived(!areAllVisibleSelected && isAnyVisibleSelected);
 
 	function toggleAll() {
-		const allIds = getAllVisibleStatusIds();
+		const allIds = getAllVisibleSeverityIds();
 		if (masterChecked) {
 			localSelectedIds = localSelectedIds.filter((id) => !allIds.includes(id));
 		} else {
@@ -166,8 +166,10 @@
 	<div class="border-b border-[#2d3540] bg-[#111821] p-3">
 		<div class="mb-3 flex items-center justify-between">
 			<div class="flex items-center gap-2 text-slate-400">
-				<Filter class="h-[18px] w-[18px]" />
-				<span class="text-xs font-bold tracking-wider uppercase">{$t('filters.statusFilter')}</span>
+				<AlertTriangle class="h-[18px] w-[18px]" />
+				<span class="text-xs font-bold tracking-wider uppercase"
+					>{$t('filters.severityFilter')}</span
+				>
 			</div>
 			<div class="flex h-7 items-center rounded-lg bg-[#2d3540] p-0.5">
 				<button
@@ -198,7 +200,7 @@
 			/>
 			<input
 				type="text"
-				placeholder={$t('filters.searchStatuses')}
+				placeholder={$t('filters.searchSeverities')}
 				bind:value={searchQuery}
 				class="w-full rounded-lg border border-[#2d3540] bg-[#1e2329] py-2 pr-3 pl-9 text-sm text-white transition-all placeholder:text-slate-600 focus:ring-1 focus:outline-none {localExclude
 					? 'focus:border-red-500/50 focus:ring-red-500/20'
@@ -218,21 +220,21 @@
 	</div>
 
 	<div class="custom-scrollbar max-h-[340px] overflow-y-auto bg-[#1e2329]">
-		{#if unifiedStatuses.length > 0}
+		{#if unifiedSeverities.length > 0}
 			<div
 				class="sticky top-0 z-10 flex items-center justify-between border-b border-[#2d3540]/50 bg-[#1e2329]/95 px-3 py-2 backdrop-blur"
 			>
 				<div class="flex items-center gap-2">
 					<GitMerge class="h-3.5 w-3.5 text-blue-400" />
-					<span class="text-xs font-semibold text-white">{$t('filters.unifiedStatuses')}</span>
+					<span class="text-xs font-semibold text-white">{$t('filters.unifiedSeverities')}</span>
 				</div>
 				<span class="text-[10px] text-slate-500 italic">
 					{$t('filters.mergedFrom', { values: { count: Object.keys(metadata).length } })}
 				</span>
 			</div>
 			<div class="space-y-0.5 p-1.5">
-				{#each unifiedStatuses as item (item.status.name)}
-					{@const isSelected = isStatusSelected(item.status.name)}
+				{#each unifiedSeverities as item (item.severity.name)}
+					{@const isSelected = isSeveritySelected(item.severity.name)}
 					<label
 						class="group flex cursor-pointer items-center justify-between rounded-lg px-2 py-2 transition-all {isSelected &&
 						localExclude
@@ -244,19 +246,22 @@
 						<div class="flex items-center gap-3">
 							<Checkbox
 								checked={isSelected}
-								onCheckedChange={() => toggleStatus(item.status.name)}
+								onCheckedChange={() => toggleSeverity(item.severity.name)}
 								class="border-slate-600 bg-[#111821] {localExclude
 									? 'text-red-500'
 									: 'text-[#196ee6]'}"
 							/>
 							<div class="flex items-center gap-2">
-								<span class="h-2 w-2 rounded-full bg-gray-400"></span>
+								<span
+									class="h-2 w-2 rounded-full"
+									style="background-color: {item.severity.color || '#9ca3af'}"
+								></span>
 								<span
 									class="text-sm {isSelected
 										? 'font-medium text-white'
 										: 'text-slate-200 group-hover:text-white'}"
 								>
-									{item.status.name}
+									{item.severity.name}
 								</span>
 							</div>
 						</div>
@@ -285,7 +290,7 @@
 			</div>
 		{/if}
 
-		{#if projectSpecificStatuses.length > 0}
+		{#if projectSpecificSeverities.length > 0}
 			<div
 				class="sticky top-0 z-10 mt-1 flex items-center justify-between border-t border-b border-[#2d3540]/50 bg-[#1e2329]/95 px-3 py-2 backdrop-blur"
 			>
@@ -296,8 +301,8 @@
 				<span class="text-[10px] text-slate-500 italic">{$t('filters.uniqueWorkflows')}</span>
 			</div>
 			<div class="space-y-0.5 p-1.5">
-				{#each projectSpecificStatuses as item (item.status.name + item.projectIds[0])}
-					{@const isSelected = isStatusSelected(item.status.name)}
+				{#each projectSpecificSeverities as item (item.severity.name + item.projectIds[0])}
+					{@const isSelected = isSeveritySelected(item.severity.name)}
 					<label
 						class="group flex cursor-pointer items-center justify-between rounded-lg px-2 py-2 transition-all {isSelected &&
 						localExclude
@@ -309,19 +314,22 @@
 						<div class="flex items-center gap-3">
 							<Checkbox
 								checked={isSelected}
-								onCheckedChange={() => toggleStatus(item.status.name)}
+								onCheckedChange={() => toggleSeverity(item.severity.name)}
 								class="border-slate-600 bg-[#111821] {localExclude
 									? 'text-red-500'
 									: 'text-[#196ee6]'}"
 							/>
 							<div class="flex items-center gap-2">
-								<span class="h-2 w-2 rounded-full bg-gray-400"></span>
+								<span
+									class="h-2 w-2 rounded-full"
+									style="background-color: {item.severity.color || '#9ca3af'}"
+								></span>
 								<span
 									class="text-sm {isSelected
 										? 'font-medium text-white'
 										: 'text-slate-200 group-hover:text-white'}"
 								>
-									{item.status.name}
+									{item.severity.name}
 								</span>
 							</div>
 						</div>
@@ -339,9 +347,9 @@
 			</div>
 		{/if}
 
-		{#if unifiedStatuses.length === 0 && projectSpecificStatuses.length === 0}
+		{#if unifiedSeverities.length === 0 && projectSpecificSeverities.length === 0}
 			<div class="py-8 text-center text-sm text-slate-500">
-				{$t('filters.noStatuses')}
+				{$t('filters.noSeverities')}
 			</div>
 		{/if}
 	</div>

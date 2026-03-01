@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as Popover from '$lib/components/ui/popover';
-	import { Plus, Folder, CircleDot, User } from '@lucide/svelte';
+	import { Plus, Folder, CircleDot, User, Flag, AlertTriangle, Tag } from '@lucide/svelte';
 	import { t } from 'svelte-i18n';
 
 	let {
@@ -11,7 +11,13 @@
 		onSelectAssignee,
 		hasProjectFilter = false,
 		hasStatusFilter = false,
-		hasAssigneeFilter = false
+		hasAssigneeFilter = false,
+		hasPriorityFilter = false,
+		hasSeverityFilter = false,
+		hasTypeFilter = false,
+		onSelectPriority,
+		onSelectSeverity,
+		onSelectType
 	}: {
 		open?: boolean;
 		buttonRef?: HTMLElement | null;
@@ -21,13 +27,24 @@
 		hasProjectFilter?: boolean;
 		hasStatusFilter?: boolean;
 		hasAssigneeFilter?: boolean;
+		hasPriorityFilter?: boolean;
+		hasSeverityFilter?: boolean;
+		hasTypeFilter?: boolean;
+		onSelectPriority?: () => void;
+		onSelectSeverity?: () => void;
+		onSelectType?: () => void;
 	} = $props();
 
-	function handleSelect(type: 'project' | 'status' | 'assignee') {
+	function handleSelect(
+		type: 'project' | 'status' | 'assignee' | 'priority' | 'severity' | 'type'
+	) {
 		open = false;
 		if (type === 'project') onSelectProject();
 		else if (type === 'status') onSelectStatus();
 		else if (type === 'assignee') onSelectAssignee();
+		else if (type === 'priority' && onSelectPriority) onSelectPriority();
+		else if (type === 'severity' && onSelectSeverity) onSelectSeverity();
+		else if (type === 'type' && onSelectType) onSelectType();
 	}
 </script>
 
@@ -78,7 +95,37 @@
 				</button>
 			{/if}
 
-			{#if hasProjectFilter && hasStatusFilter && hasAssigneeFilter}
+			{#if !hasPriorityFilter}
+				<button
+					class="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-slate-400 transition-colors hover:bg-[#2d3540] hover:text-white"
+					onclick={() => handleSelect('priority')}
+				>
+					<Flag class="h-[18px] w-[18px] transition-colors group-hover:text-amber-500" />
+					<span class="text-sm">{$t('filters.priority')}</span>
+				</button>
+			{/if}
+
+			{#if !hasSeverityFilter}
+				<button
+					class="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-slate-400 transition-colors hover:bg-[#2d3540] hover:text-white"
+					onclick={() => handleSelect('severity')}
+				>
+					<AlertTriangle class="h-[18px] w-[18px] transition-colors group-hover:text-red-400" />
+					<span class="text-sm">{$t('filters.severity')}</span>
+				</button>
+			{/if}
+
+			{#if !hasTypeFilter}
+				<button
+					class="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-slate-400 transition-colors hover:bg-[#2d3540] hover:text-white"
+					onclick={() => handleSelect('type')}
+				>
+					<Tag class="h-[18px] w-[18px] transition-colors group-hover:text-indigo-400" />
+					<span class="text-sm">{$t('filters.type')}</span>
+				</button>
+			{/if}
+
+			{#if hasProjectFilter && hasStatusFilter && hasAssigneeFilter && hasPriorityFilter && hasSeverityFilter && hasTypeFilter}
 				<div class="px-3 py-2 text-sm text-slate-500 italic">
 					{$t('filters.allFiltersActive')}
 				</div>

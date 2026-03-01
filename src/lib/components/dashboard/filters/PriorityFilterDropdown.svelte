@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { t } from 'svelte-i18n';
 	import { SvelteMap } from 'svelte/reactivity';
-	import type { IssueStatus, ProjectMetadata, Project } from '$lib/types';
+	import type { Priority, ProjectMetadata, Project } from '$lib/types';
 	import { getProjectColor, getProjectTagStyles } from '$lib/utils/projectColors';
 	import * as Popover from '$lib/components/ui/popover';
 	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { Search, Filter, GitMerge, Puzzle, Combine, Ban } from '@lucide/svelte';
+	import { Search, Flag, GitMerge, Puzzle, Combine, Ban } from '@lucide/svelte';
 
 	let {
 		metadata = {},
@@ -39,29 +39,29 @@
 		wasOpen = open;
 	});
 
-	interface StatusWithProjects {
-		status: IssueStatus;
+	interface PriorityWithProjects {
+		priority: Priority;
 		projectIds: number[];
 		projectNames: string[];
 	}
 
-	let groupedStatuses = $derived.by(() => {
-		const statusMap = new SvelteMap<string, StatusWithProjects>();
+	let groupedPriorities = $derived.by(() => {
+		const priorityMap = new SvelteMap<string, PriorityWithProjects>();
 
 		Object.entries(metadata).forEach(([pidStr, meta]) => {
 			const pid = parseInt(pidStr);
 			const project = projects.find((p) => p.id === pid);
 			const projectName = project?.name || $t('filters.projectFallback', { values: { pid } });
 
-			meta.statuses.forEach((status) => {
-				const key = status.name.toLowerCase();
-				if (statusMap.has(key)) {
-					const existing = statusMap.get(key)!;
+			meta.priorities.forEach((priority) => {
+				const key = priority.name.toLowerCase();
+				if (priorityMap.has(key)) {
+					const existing = priorityMap.get(key)!;
 					existing.projectIds.push(pid);
 					existing.projectNames.push(projectName);
 				} else {
-					statusMap.set(key, {
-						status: { ...status, color: '#6b7280' },
+					priorityMap.set(key, {
+						priority: { ...priority },
 						projectIds: [pid],
 						projectNames: [projectName]
 					});
@@ -69,40 +69,40 @@
 			});
 		});
 
-		return Array.from(statusMap.values());
+		return Array.from(priorityMap.values());
 	});
 
-	let unifiedStatuses = $derived(
-		groupedStatuses
-			.filter((s) => s.projectIds.length > 1)
-			.filter((s) => s.status.name.toLowerCase().includes(searchQuery.toLowerCase()))
+	let unifiedPriorities = $derived(
+		groupedPriorities
+			.filter((p) => p.projectIds.length > 1)
+			.filter((p) => p.priority.name.toLowerCase().includes(searchQuery.toLowerCase()))
 	);
 
-	let projectSpecificStatuses = $derived(
-		groupedStatuses
-			.filter((s) => s.projectIds.length === 1)
-			.filter((s) => s.status.name.toLowerCase().includes(searchQuery.toLowerCase()))
+	let projectSpecificPriorities = $derived(
+		groupedPriorities
+			.filter((p) => p.projectIds.length === 1)
+			.filter((p) => p.priority.name.toLowerCase().includes(searchQuery.toLowerCase()))
 	);
 
-	function getStatusIdsByName(statusName: string): number[] {
+	function getPriorityIdsByName(priorityName: string): number[] {
 		const ids: number[] = [];
 		Object.values(metadata).forEach((meta) => {
-			meta.statuses.forEach((s) => {
-				if (s.name.toLowerCase() === statusName.toLowerCase()) {
-					ids.push(s.id);
+			meta.priorities.forEach((p) => {
+				if (p.name.toLowerCase() === priorityName.toLowerCase()) {
+					ids.push(p.id);
 				}
 			});
 		});
 		return ids;
 	}
 
-	function isStatusSelected(statusName: string): boolean {
-		const ids = getStatusIdsByName(statusName);
+	function isPrioritySelected(priorityName: string): boolean {
+		const ids = getPriorityIdsByName(priorityName);
 		return ids.some((id) => localSelectedIds.includes(id));
 	}
 
-	function toggleStatus(statusName: string) {
-		const ids = getStatusIdsByName(statusName);
+	function togglePriority(priorityName: string) {
+		const ids = getPriorityIdsByName(priorityName);
 		const anySelected = ids.some((id) => localSelectedIds.includes(id));
 
 		if (anySelected) {
@@ -121,34 +121,34 @@
 	}
 
 	let selectedCount = $derived(
-		groupedStatuses.filter((s) => isStatusSelected(s.status.name)).length
+		groupedPriorities.filter((p) => isPrioritySelected(p.priority.name)).length
 	);
 
-	let allVisibleStatuses = $derived([...unifiedStatuses, ...projectSpecificStatuses]);
+	let allVisiblePriorities = $derived([...unifiedPriorities, ...projectSpecificPriorities]);
 
-	function getAllVisibleStatusIds() {
+	function getAllVisiblePriorityIds() {
 		const ids: number[] = [];
-		allVisibleStatuses.forEach((s) => {
-			ids.push(...getStatusIdsByName(s.status.name));
+		allVisiblePriorities.forEach((p) => {
+			ids.push(...getPriorityIdsByName(p.priority.name));
 		});
 		return ids;
 	}
 
 	let areAllVisibleSelected = $derived.by(() => {
-		if (allVisibleStatuses.length === 0) return false;
-		return allVisibleStatuses.every((s) => isStatusSelected(s.status.name));
+		if (allVisiblePriorities.length === 0) return false;
+		return allVisiblePriorities.every((p) => isPrioritySelected(p.priority.name));
 	});
 
 	let isAnyVisibleSelected = $derived.by(() => {
-		if (allVisibleStatuses.length === 0) return false;
-		return allVisibleStatuses.some((s) => isStatusSelected(s.status.name));
+		if (allVisiblePriorities.length === 0) return false;
+		return allVisiblePriorities.some((p) => isPrioritySelected(p.priority.name));
 	});
 
 	let masterChecked = $derived(areAllVisibleSelected);
 	let masterIndeterminate = $derived(!areAllVisibleSelected && isAnyVisibleSelected);
 
 	function toggleAll() {
-		const allIds = getAllVisibleStatusIds();
+		const allIds = getAllVisiblePriorityIds();
 		if (masterChecked) {
 			localSelectedIds = localSelectedIds.filter((id) => !allIds.includes(id));
 		} else {
@@ -166,8 +166,10 @@
 	<div class="border-b border-[#2d3540] bg-[#111821] p-3">
 		<div class="mb-3 flex items-center justify-between">
 			<div class="flex items-center gap-2 text-slate-400">
-				<Filter class="h-[18px] w-[18px]" />
-				<span class="text-xs font-bold tracking-wider uppercase">{$t('filters.statusFilter')}</span>
+				<Flag class="h-[18px] w-[18px]" />
+				<span class="text-xs font-bold tracking-wider uppercase"
+					>{$t('filters.priorityFilter')}</span
+				>
 			</div>
 			<div class="flex h-7 items-center rounded-lg bg-[#2d3540] p-0.5">
 				<button
@@ -198,7 +200,7 @@
 			/>
 			<input
 				type="text"
-				placeholder={$t('filters.searchStatuses')}
+				placeholder={$t('filters.searchPriorities')}
 				bind:value={searchQuery}
 				class="w-full rounded-lg border border-[#2d3540] bg-[#1e2329] py-2 pr-3 pl-9 text-sm text-white transition-all placeholder:text-slate-600 focus:ring-1 focus:outline-none {localExclude
 					? 'focus:border-red-500/50 focus:ring-red-500/20'
@@ -218,21 +220,21 @@
 	</div>
 
 	<div class="custom-scrollbar max-h-[340px] overflow-y-auto bg-[#1e2329]">
-		{#if unifiedStatuses.length > 0}
+		{#if unifiedPriorities.length > 0}
 			<div
 				class="sticky top-0 z-10 flex items-center justify-between border-b border-[#2d3540]/50 bg-[#1e2329]/95 px-3 py-2 backdrop-blur"
 			>
 				<div class="flex items-center gap-2">
 					<GitMerge class="h-3.5 w-3.5 text-blue-400" />
-					<span class="text-xs font-semibold text-white">{$t('filters.unifiedStatuses')}</span>
+					<span class="text-xs font-semibold text-white">{$t('filters.unifiedPriorities')}</span>
 				</div>
 				<span class="text-[10px] text-slate-500 italic">
 					{$t('filters.mergedFrom', { values: { count: Object.keys(metadata).length } })}
 				</span>
 			</div>
 			<div class="space-y-0.5 p-1.5">
-				{#each unifiedStatuses as item (item.status.name)}
-					{@const isSelected = isStatusSelected(item.status.name)}
+				{#each unifiedPriorities as item (item.priority.name)}
+					{@const isSelected = isPrioritySelected(item.priority.name)}
 					<label
 						class="group flex cursor-pointer items-center justify-between rounded-lg px-2 py-2 transition-all {isSelected &&
 						localExclude
@@ -244,19 +246,22 @@
 						<div class="flex items-center gap-3">
 							<Checkbox
 								checked={isSelected}
-								onCheckedChange={() => toggleStatus(item.status.name)}
+								onCheckedChange={() => togglePriority(item.priority.name)}
 								class="border-slate-600 bg-[#111821] {localExclude
 									? 'text-red-500'
 									: 'text-[#196ee6]'}"
 							/>
 							<div class="flex items-center gap-2">
-								<span class="h-2 w-2 rounded-full bg-gray-400"></span>
+								<span
+									class="h-2 w-2 rounded-full"
+									style="background-color: {item.priority.color || '#6b7280'}"
+								></span>
 								<span
 									class="text-sm {isSelected
 										? 'font-medium text-white'
 										: 'text-slate-200 group-hover:text-white'}"
 								>
-									{item.status.name}
+									{item.priority.name}
 								</span>
 							</div>
 						</div>
@@ -285,7 +290,7 @@
 			</div>
 		{/if}
 
-		{#if projectSpecificStatuses.length > 0}
+		{#if projectSpecificPriorities.length > 0}
 			<div
 				class="sticky top-0 z-10 mt-1 flex items-center justify-between border-t border-b border-[#2d3540]/50 bg-[#1e2329]/95 px-3 py-2 backdrop-blur"
 			>
@@ -296,8 +301,8 @@
 				<span class="text-[10px] text-slate-500 italic">{$t('filters.uniqueWorkflows')}</span>
 			</div>
 			<div class="space-y-0.5 p-1.5">
-				{#each projectSpecificStatuses as item (item.status.name + item.projectIds[0])}
-					{@const isSelected = isStatusSelected(item.status.name)}
+				{#each projectSpecificPriorities as item (item.priority.name + item.projectIds[0])}
+					{@const isSelected = isPrioritySelected(item.priority.name)}
 					<label
 						class="group flex cursor-pointer items-center justify-between rounded-lg px-2 py-2 transition-all {isSelected &&
 						localExclude
@@ -309,19 +314,22 @@
 						<div class="flex items-center gap-3">
 							<Checkbox
 								checked={isSelected}
-								onCheckedChange={() => toggleStatus(item.status.name)}
+								onCheckedChange={() => togglePriority(item.priority.name)}
 								class="border-slate-600 bg-[#111821] {localExclude
 									? 'text-red-500'
 									: 'text-[#196ee6]'}"
 							/>
 							<div class="flex items-center gap-2">
-								<span class="h-2 w-2 rounded-full bg-gray-400"></span>
+								<span
+									class="h-2 w-2 rounded-full"
+									style="background-color: {item.priority.color || '#6b7280'}"
+								></span>
 								<span
 									class="text-sm {isSelected
 										? 'font-medium text-white'
 										: 'text-slate-200 group-hover:text-white'}"
 								>
-									{item.status.name}
+									{item.priority.name}
 								</span>
 							</div>
 						</div>
@@ -339,9 +347,9 @@
 			</div>
 		{/if}
 
-		{#if unifiedStatuses.length === 0 && projectSpecificStatuses.length === 0}
+		{#if unifiedPriorities.length === 0 && projectSpecificPriorities.length === 0}
 			<div class="py-8 text-center text-sm text-slate-500">
-				{$t('filters.noStatuses')}
+				{$t('filters.noPriorities')}
 			</div>
 		{/if}
 	</div>

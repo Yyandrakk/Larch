@@ -77,7 +77,9 @@
 - **Gotcha**: `CMD_EDIT_ISSUE_COMMENT` and `CMD_DELETE_ISSUE_COMMENT` were present in `commands.svelte.ts` but LSP sometimes reported them as missing. Verified existence manually.
 - **Dependency**: Needed `@lucide/svelte` for icons.
 - **Verification**: Verified via `pnpm check`. E2E tests are missing in the repo, so visual/manual verification would be next step if environment allowed.
+
 ### Task 7: i18n and Verification
+
 - Added missing i18n keys to `en.json` for title editing and comment management.
 - Keys added: `editTitle`, `titleUpdated`, `titleUpdateError`, `commentUpdated`, `commentDeleted`, `deleteCommentTitle`, `deleteCommentDescription`.
 - Verified that `just check` passes.

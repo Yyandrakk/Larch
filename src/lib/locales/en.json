@@ -96,6 +96,8 @@
 		"project": "Project",
 		"assignedTo": "Assignee",
 		"unassigned": "Unassigned",
+		"prioritySeverity": "P / S",
+		"type": "Type",
 		"changedIndicator": "Modified since last refresh"
 	},
 	"filters": {
@@ -136,7 +138,23 @@
 		"allFiltersActive": "All filters are active",
 		"noStatuses": "No statuses found",
 		"noResults": "No results found",
-		"suggestions": "Suggestions"
+		"suggestions": "Suggestions",
+		"priority": "Priority",
+		"severity": "Severity",
+		"type": "Type",
+		"priorityFilter": "Priority Filter",
+		"severityFilter": "Severity Filter",
+		"typeFilter": "Type Filter",
+		"searchPriorities": "Search priorities...",
+		"searchSeverities": "Search severities...",
+		"searchTypes": "Search types...",
+		"noPriorities": "No priorities found",
+		"noSeverities": "No severities found",
+		"noTypes": "No types found",
+		"unifiedPriorities": "Unified Priorities",
+		"unifiedSeverities": "Unified Severities",
+		"unifiedTypes": "Unified Types",
+		"projectFallback": "Project {pid}"
 	},
 	"issueDetail": {
 		"loading": "Loading issue...",

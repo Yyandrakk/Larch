@@ -4,6 +4,7 @@
 - SvelteSet from 'svelte/reactivity' is useful for tracking reactive sets of IDs.
 
 ## Task 2: UI Implementation and Snapshot Logic Fix
+
 - **SvelteSet Reactivity**: Used `SvelteSet` for `changedIssueIds` to ensure reactive tracking of unread issues.
 - **New Issue Detection**: Improved `computeChangedIds` by checking for missing keys in `previousModifiedDates`. Using `undefined` as the indicator for "new" and `null` as the indicator for "present but no date".
 - **Layout Stability**: Added an invisible spacer (`size-2`) in `IssueTable.svelte` to prevent layout shift when the blue dot indicator appears/disappears.

@@ -494,6 +494,7 @@
 			{changedIssueIds}
 			issues={filteredIssues}
 			{projects}
+			{metadata}
 			onIssueSelect={handleIssueSelect}
 		/>
 	</div>
