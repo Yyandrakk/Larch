@@ -3,6 +3,7 @@
 	import type { Issue, Project, ProjectMetadata } from '$lib/types';
 	import { t } from 'svelte-i18n';
 	import { UserPlus, Clock } from '@lucide/svelte';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 
 	let {
 		issues = [],
@@ -213,24 +214,45 @@
 						{#if issue.assigned_to_name}
 							<div class="flex items-center gap-2">
 								{#if issue.assigned_to_photo}
-									<div
-										class="size-6 rounded-full bg-cover bg-center bg-no-repeat ring-1 ring-[#243347]"
-										style="background-image: url({issue.assigned_to_photo});"
-									></div>
+									<Tooltip.Root>
+										<Tooltip.Trigger>
+											<div
+												class="size-6 rounded-full bg-cover bg-center bg-no-repeat ring-1 ring-[#243347]"
+												style="background-image: url({issue.assigned_to_photo});"
+											></div>
+										</Tooltip.Trigger>
+										<Tooltip.Content>
+											<p class="font-medium">{issue.assigned_to_name}</p>
+										</Tooltip.Content>
+									</Tooltip.Root>
 								{:else}
-									<div
-										class="flex size-6 items-center justify-center rounded-full bg-[#196ee6] text-[10px] font-medium text-white ring-1 ring-[#243347]"
-									>
-										{getInitials(issue.assigned_to_name)}
-									</div>
+									<Tooltip.Root>
+										<Tooltip.Trigger>
+											<div
+												class="flex size-6 items-center justify-center rounded-full bg-[#196ee6] text-[10px] font-medium text-white ring-1 ring-[#243347]"
+											>
+												{getInitials(issue.assigned_to_name)}
+											</div>
+										</Tooltip.Trigger>
+										<Tooltip.Content>
+											<p class="font-medium">{issue.assigned_to_name}</p>
+										</Tooltip.Content>
+									</Tooltip.Root>
 								{/if}
 							</div>
 						{:else}
-							<div
-								class="flex size-6 items-center justify-center rounded-full border border-dashed border-[#93a9c8] bg-[#243347]"
-							>
-								<UserPlus class="h-3.5 w-3.5 text-[#93a9c8]" />
-							</div>
+							<Tooltip.Root>
+								<Tooltip.Trigger>
+									<div
+										class="flex size-6 items-center justify-center rounded-full border border-dashed border-[#93a9c8] bg-[#243347]"
+									>
+										<UserPlus class="h-3.5 w-3.5 text-[#93a9c8]" />
+									</div>
+								</Tooltip.Trigger>
+								<Tooltip.Content>
+									<p>{$t('table.unassigned')}</p>
+								</Tooltip.Content>
+							</Tooltip.Root>
 						{/if}
 					</td>
 					<td class="px-2 py-2.5">

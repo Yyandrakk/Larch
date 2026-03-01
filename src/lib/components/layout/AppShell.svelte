@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Sidebar from './Sidebar.svelte';
 	import Header from './Header.svelte';
+	import { TooltipProvider } from '$lib/components/ui/tooltip';
 	import type { Snippet } from 'svelte';
 
 	type Screen = 'projects' | 'dashboard';
@@ -17,14 +18,16 @@
 	} = $props();
 </script>
 
-<div class="flex h-screen w-full overflow-hidden bg-[#111821] font-sans text-white">
-	<Sidebar {currentScreen} {onNavigate} />
+<TooltipProvider>
+	<div class="flex h-screen w-full overflow-hidden bg-[#111821] font-sans text-white">
+		<Sidebar {currentScreen} {onNavigate} />
 
-	<main class="relative flex min-w-0 flex-1 flex-col bg-[#111821]">
-		<Header {onLogout} />
+		<main class="relative flex min-w-0 flex-1 flex-col bg-[#111821]">
+			<Header {onLogout} />
 
-		<div class="flex flex-1 flex-col overflow-hidden">
-			{@render children()}
-		</div>
-	</main>
-</div>
+			<div class="flex flex-1 flex-col overflow-hidden">
+				{@render children()}
+			</div>
+		</main>
+	</div>
+</TooltipProvider>
