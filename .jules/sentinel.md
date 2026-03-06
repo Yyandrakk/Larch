@@ -15,3 +15,9 @@
 **Vulnerability:** The `sanitizeHtml` function was adding and removing a DOMPurify hook on every call. `DOMPurify.removeHook` removes _all_ hooks for a given entry point, potentially disabling other security hooks and causing race conditions.
 **Learning:** DOMPurify hooks modify the global instance. Adding/removing them dynamically is unsafe in a modular application.
 **Prevention:** Register DOMPurify hooks once at the module top-level (on import) to ensure they are permanently active and do not interfere with other components.
+
+## 2025-05-18 - Missing DOMPurify in Markdown Rendering
+
+**Vulnerability:** The application rendered markdown to HTML using regex parsing and dynamically injected the result into the DOM via `{@html}`. This bypassed DOMPurify sanitization. If regex parsing had any flaws, a Cross-Site Scripting (XSS) payload could be executed, leading to Remote Code Execution (RCE) via Tauri global APIs.
+**Learning:** Even if HTML is escaped before markdown parsing, the subsequent regex replacements can create unsafe HTML or be manipulated to execute scripts. All dynamically generated or transformed HTML, regardless of whether the source was raw user input or an intermediate markdown parser, MUST be passed through DOMPurify before rendering with Svelte's `{@html}`.
+**Prevention:** Ensured `renderMarkdown` in `src/lib/utils/markdown.ts` wraps its final parsed output with `sanitizeHtml` from `$lib/sanitize`. Suppressed the Svelte warning with `<!-- eslint-disable-next-line svelte/no-at-html-tags -->` only after sanitization was guaranteed.
