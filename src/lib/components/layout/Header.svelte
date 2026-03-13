@@ -46,6 +46,8 @@
 
 	<div class="flex items-center gap-3">
 		<button
+			aria-label={$t('header.notifications')}
+			title={$t('header.notifications')}
 			class="relative flex size-8 items-center justify-center rounded text-[#93a9c8] transition-colors hover:bg-[#243347] hover:text-white"
 		>
 			<Bell class="h-5 w-5" />
@@ -59,6 +61,10 @@
 		<div class="relative">
 			<button
 				onclick={toggleDropdown}
+				aria-haspopup="menu"
+				aria-expanded={dropdownOpen ? 'true' : 'false'}
+				aria-label={$t('header.userMenu')}
+				title={$t('header.userMenu')}
 				class="flex items-center gap-2 rounded-full py-1 pr-2 pl-1 transition-colors hover:bg-[#243347]"
 			>
 				{#if photoUrl}
