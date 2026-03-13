@@ -31,6 +31,7 @@
 		<nav class="flex flex-col gap-1">
 			<button
 				onclick={() => onNavigate('dashboard')}
+				aria-current={currentScreen === 'dashboard' ? 'page' : false}
 				class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors {currentScreen ===
 				'dashboard'
 					? 'bg-sidebar-accent text-white'
@@ -43,6 +44,7 @@
 			</button>
 			<button
 				onclick={() => onNavigate('projects')}
+				aria-current={currentScreen === 'projects' ? 'page' : false}
 				class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors {currentScreen ===
 				'projects'
 					? 'bg-sidebar-accent text-white'
