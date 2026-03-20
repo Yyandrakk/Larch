@@ -136,6 +136,7 @@
 			<input
 				type="text"
 				placeholder={$t('filters.searchProjects')}
+				aria-label={$t('filters.searchProjects')}
 				bind:value={searchQuery}
 				class="w-full rounded-lg border border-[#2d3540] bg-[#1e2329] py-2 pr-3 pl-9 text-sm text-white transition-all placeholder:text-slate-600 focus:ring-1 focus:outline-none {localExclude
 					? 'focus:border-red-500/50 focus:ring-red-500/20'
