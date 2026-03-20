@@ -15,7 +15,9 @@
 - Sometimes edit reports success but the file content is not updated on disk, or subsequent reads don't show the change.
 - Timestamp mismatches can prevent write from working if a hidden modification happened.
 - In such cases, using bash with a heredoc to overwrite the file is a robust fallback.
+
 ### edit tool failed to apply changes in DashboardScreen.svelte
+
 - The 'edit' tool reported success for multiple 'replace_lines' and 'insert_after' calls but the 'Updated file' output (and subsequent reads) showed no changes were actually applied.
 - This might be related to multiline ranges or indentation handling in large Svelte files.
 - Fallback to 'write' tool for the entire file was successful.

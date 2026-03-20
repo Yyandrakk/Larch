@@ -1,4 +1,5 @@
 import { transformImageUrls } from '$lib/utils/image-auth';
+import { sanitizeHtml } from '$lib/sanitize';
 
 function escapeHtml(text: string): string {
 	return text
@@ -53,5 +54,9 @@ export function renderMarkdown(text: string): string {
 		// Line breaks
 		.replace(/\n/g, '<br>');
 
-	return transformImageUrls(html);
+	// Sanitize the HTML BEFORE transforming image URLs (which may add taiga-auth:// schemes)
+	// This ensures robust defense-in-depth against XSS even if the regex parser produces unexpected structures.
+	const sanitized = sanitizeHtml(html);
+
+	return transformImageUrls(sanitized);
 }

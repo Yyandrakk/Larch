@@ -69,7 +69,9 @@
   Task 11 completed: Added Priority, Severity, and Type options to AddFilterDropdown.svelte menu.
 - In Svelte 5, `{@const}` tags must be placed as an immediate child of a block (`{#each}`, `{#if}`, etc.). They cannot be nested inside standard HTML elements like `<div>` or `<td>`. Place them at the top of the block where they belong.
 - `Record<number, ProjectMetadata>` is passed to resolve missing priorities/severities/types that Taiga's Issue API skips on the main issue model. Using optional chaining like `metadata[issue.project].priorities?.find(...)` handles edge cases safely when metadata is loading.
+
 ### Task 13: Pass metadata to IssueTable in DashboardScreen.svelte
+
 - Successfully wired the 'metadata' prop from DashboardScreen to IssueTable.
 - This allows IssueTable to resolve Priority, Severity, and Type names/colors correctly.
 - Used 'write' tool after 'edit' tool failed to apply changes multiple times (likely due to indentation or multiline range issues).
