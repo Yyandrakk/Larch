@@ -17,7 +17,8 @@
 		"user": "User",
 		"logout": "Log Out",
 		"loggedOut": "Logged out successfully",
-		"sessionExpired": "Session expired. Please log in again."
+		"sessionExpired": "Session expired. Please log in again.",
+		"notifications": "Notifications"
 	},
 	"login": {
 		"welcomeBack": "Welcome back",
