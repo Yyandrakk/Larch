@@ -1,3 +1,4 @@
+import { sanitizeHtml } from '$lib/sanitize';
 import { transformImageUrls } from '$lib/utils/image-auth';
 
 function escapeHtml(text: string): string {
@@ -53,5 +54,8 @@ export function renderMarkdown(text: string): string {
 		// Line breaks
 		.replace(/\n/g, '<br>');
 
-	return transformImageUrls(html);
+	// IMPORTANT: Sanitize intermediate markdown HTML before injecting custom protocols
+	const sanitized = sanitizeHtml(html);
+
+	return transformImageUrls(sanitized);
 }
