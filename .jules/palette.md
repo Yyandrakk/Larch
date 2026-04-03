@@ -1,0 +1,3 @@
+## 2025-02-12 - Accessibility enhancements for navigation
+**Learning:** Found several missing accessibility attributes on navigation elements (Header and Sidebar) including missing labels for icon-only buttons (`aria-label`, `title`), missing interactive states for dropdown menus (`aria-haspopup`, `aria-expanded`), and missing active page indicators for navigation links (`aria-current="page"`).
+**Action:** Always verify that layout components containing navigation elements have appropriate descriptive attributes (especially for icon-only components) and state indicators to improve context for screen readers.
