@@ -1,0 +1,4 @@
+## 2024-04-24 - Add ARIA attributes to navigation layout buttons
+
+**Learning:** Icon-only layout navigation buttons require explicit screen-reader support, including `aria-label`, `title`, and appropriate state attributes like `aria-expanded` and `aria-haspopup`. Moreover, semantic state such as the currently active page in a sidebar navigation should be explicitly exposed to screen readers using `aria-current="page"`.
+**Action:** When creating or modifying layout navigation buttons (such as in `Header.svelte` or `Sidebar.svelte`), ensure that icon-only buttons have proper `aria-label` and `title` properties. For buttons controlling dropdowns or menus, ensure `aria-expanded` and `aria-haspopup` are used. For sidebar or navigation menus, use `aria-current="page"` to denote the active view. These ARIA labels should use translated strings via `svelte-i18n`.
