@@ -2,7 +2,6 @@
 	import { tick, type Component } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { t } from 'svelte-i18n';
-	import { transformImageUrls } from '$lib/utils/image-auth';
 	import { readImage } from '@tauri-apps/plugin-clipboard-manager';
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import { Bold, Italic, Code, Link, List, Eye, Edit3, Send, Loader2 } from '@lucide/svelte';
@@ -23,6 +22,7 @@
 		disabled?: boolean;
 		submitting?: boolean;
 		submitLabel?: string;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		submitIcon?: Component | any;
 		onSubmit?: (text: string) => void;
 		onCancel?: () => void;
@@ -118,7 +118,7 @@
 	// Event Handlers
 	// ============================================================================
 
-	async function checkSystemClipboard(e: ClipboardEvent) {
+	async function checkSystemClipboard() {
 		try {
 			// Check for image in system clipboard (bypassing WebView restrictions)
 			const image = await readImage();
@@ -152,13 +152,13 @@
 						const toInsert = markdown.startsWith('!') ? markdown : `![${file.name}](${markdown})`;
 						await insertTextAtCursor(toInsert);
 					}
-				} catch (error) {
+				} catch {
 					// Fallback failed
 				} finally {
 					uploading = false;
 				}
 			}
-		} catch (err) {
+		} catch {
 			// System clipboard read failed or empty
 		}
 	}
@@ -186,7 +186,7 @@
 							const toInsert = markdown.startsWith('!') ? markdown : `![${file.name}](${markdown})`;
 							await insertTextAtCursor(toInsert);
 						}
-					} catch (error) {
+					} catch {
 						// Error handled
 					} finally {
 						uploading = false;
@@ -218,7 +218,7 @@
 							const toInsert = markdown.startsWith('!') ? markdown : `![${file.name}](${markdown})`;
 							await insertTextAtCursor(toInsert);
 						}
-					} catch (error) {
+					} catch {
 						// Error handled
 					} finally {
 						uploading = false;
@@ -228,7 +228,7 @@
 			}
 		}
 
-		await checkSystemClipboard(e);
+		await checkSystemClipboard();
 	}
 
 	async function insertTextAtCursor(text: string) {
@@ -347,6 +347,7 @@
 			class="prose prose-sm dark:prose-invert bg-muted/30 min-h-[100px] max-w-none rounded-lg border p-3"
 		>
 			{#if value.trim()}
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 				{@html renderMarkdown(value)}
 			{:else}
 				<span class="text-muted-foreground italic">

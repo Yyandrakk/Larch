@@ -1,4 +1,5 @@
 import { transformImageUrls } from '$lib/utils/image-auth';
+import { sanitizeHtml } from '$lib/sanitize';
 
 function escapeHtml(text: string): string {
 	return text
@@ -53,5 +54,7 @@ export function renderMarkdown(text: string): string {
 		// Line breaks
 		.replace(/\n/g, '<br>');
 
-	return transformImageUrls(html);
+	// Sanitize the HTML output BEFORE transforming image URLs
+	// (DOMPurify will strip taiga-auth:// protocols if done after)
+	return transformImageUrls(sanitizeHtml(html));
 }
