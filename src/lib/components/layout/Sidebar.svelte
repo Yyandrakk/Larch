@@ -35,6 +35,7 @@
 				'dashboard'
 					? 'bg-sidebar-accent text-white'
 					: 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-white'}"
+				aria-current={currentScreen === 'dashboard' ? 'page' : undefined}
 			>
 				<LayoutDashboard
 					class="h-5 w-5 {currentScreen === 'dashboard' ? 'text-brand-primary' : ''}"
@@ -47,6 +48,7 @@
 				'projects'
 					? 'bg-sidebar-accent text-white'
 					: 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-white'}"
+				aria-current={currentScreen === 'projects' ? 'page' : undefined}
 			>
 				<FolderOpen class="h-5 w-5 {currentScreen === 'projects' ? 'text-brand-primary' : ''}" />
 				<span class="text-sm font-medium">{$t('nav.projects')}</span>
